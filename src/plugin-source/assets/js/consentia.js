@@ -1,334 +1,563 @@
 /**
- * Consentia — frontend consent manager.
+ * Consentia — banner, granular consent, real script blocking,
+ * Google Consent Mode v2, GPC support, consent log, cross-domain
+ * sync and public JS API.
  *
- * Vanilla JS, no dependencies. Reads `consentiaData` localized by
- * WordPress, renders the banner, stores consent in a first-party
- * cookie (+ localStorage fallback), unblocks category scripts and
- * exposes the window.Consentia API.
- *
- * Events dispatched on `document`:
- *   - consentia:granted  (first decision)
- *   - consentia:updated  (any change)
+ * Zero dependencies. ~12 KB minified.
  *
  * @package Consentia
  */
-( function () {
+(function () {
 	'use strict';
 
-	if ( window.__consentiaLoaded || typeof window.consentiaData === 'undefined' ) {
+	if (window.Consentia) {
+		return; // One instance per page.
+	}
+
+	var data = window.consentiaData || {};
+	var settings = data.settings || {};
+	var categories = data.categories || {};
+	var consentVersion = String(data.consent_version || '');
+
+	var COOKIE = 'consentia';
+	var ALL = ['necessary', 'functional', 'analytics', 'performance', 'advertising'];
+	var root = document.getElementById('consentia-root');
+	var decided = false;
+	var state = buildConsent({});
+
+	if (!root) {
 		return;
 	}
-	window.__consentiaLoaded = true;
 
-	var data      = window.consentiaData;
-	var settings  = data.settings || {};
-	var cats      = data.categories || {};
-	var COOKIE    = 'consentia';
-	var reduced   = window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
-	var consent   = readConsent();
-	var bannerEl  = null;
-	var prefsEl   = null;
+	/* ---------------------------------------------------- consent ---- */
 
-	/* ------------------------------------------------ storage ---- */
-
-	function monthsToSeconds( months ) {
-		return Math.max( 1, parseInt( months, 10 ) || 6 ) * 30 * 24 * 60 * 60;
+	function buildConsent(partial) {
+		var c = { necessary: true, functional: false, analytics: false, performance: false, advertising: false };
+		for (var k in partial) {
+			if (Object.prototype.hasOwnProperty.call(c, k)) {
+				c[k] = !!partial[k];
+			}
+		}
+		c.necessary = true; // Can never be off.
+		return c;
 	}
 
-	function writeConsent( value ) {
-		var payload = JSON.stringify( value );
-		var maxAge  = monthsToSeconds( settings.renew_months );
-		try {
-			document.cookie = COOKIE + '=' + encodeURIComponent( payload ) +
-				';path=/;max-age=' + maxAge + ';SameSite=Lax';
-			window.localStorage.setItem( COOKIE, payload );
-		} catch ( e ) { /* storage unavailable: cookie alone is enough */ }
+	function allGranted() {
+		return buildConsent({ functional: true, analytics: true, performance: true, advertising: true });
 	}
 
-	function readConsent() {
-		var raw = null;
+	/* ---------------------------------------------------- storage ---- */
+
+	function renewMs() {
+		var months = parseInt(settings.renew_months || 6, 10);
+		return Math.max(1, months) * 30 * 24 * 3600 * 1000;
+	}
+
+	function readStored() {
 		try {
-			var match = document.cookie.match( new RegExp( '(?:^|; )' + COOKIE + '=([^;]+)' ) );
-			if ( match ) {
-				raw = decodeURIComponent( match[1] );
+			var raw = null;
+			var m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)'));
+			if (m) {
+				raw = decodeURIComponent(m[1]);
 			} else {
-				raw = window.localStorage.getItem( COOKIE );
+				raw = localStorage.getItem(COOKIE);
 			}
-		} catch ( e ) {
-			return null;
-		}
-		if ( ! raw ) {
-			return null;
-		}
-		try {
-			var value = JSON.parse( raw );
-			var maxAge = monthsToSeconds( settings.renew_months ) * 1000;
-			if ( value && value.ts && ( Date.now() - value.ts ) > maxAge ) {
-				return null; // renewal period expired: ask again
+			if (!raw) {
+				return null;
 			}
-			return value;
-		} catch ( e ) {
+			var stored = JSON.parse(raw);
+			if (!stored || typeof stored !== 'object' || !stored.c) {
+				return null;
+			}
+			if (settings.renew_on_update && stored.v !== consentVersion) {
+				return null; // Banner text changed: ask again.
+			}
+			if (stored.t && Date.now() - stored.t > renewMs()) {
+				return null; // Renewal period expired.
+			}
+			return buildConsent(stored.c);
+		} catch (e) {
 			return null;
 		}
 	}
 
-	/* --------------------------------------------- script gate ---- */
+	function writeStored(consent) {
+		var payload = JSON.stringify({ v: consentVersion, t: Date.now(), c: consent });
+		var maxAge = Math.round(renewMs() / 1000);
+		document.cookie = COOKIE + '=' + encodeURIComponent(payload) + '; path=/; max-age=' + maxAge + '; SameSite=Lax';
+		try {
+			localStorage.setItem(COOKIE, payload);
+		} catch (e) {
+			/* private mode: cookie only */
+		}
+	}
 
-	function activateScripts( categories ) {
-		var blocked = document.querySelectorAll( 'script[type="text/plain"][data-consentia]' );
-		Array.prototype.forEach.call( blocked, function ( node ) {
-			var cat = node.getAttribute( 'data-consentia' );
-			if ( ! categories[ cat ] ) {
+	function visitorId() {
+		var vid;
+		try {
+			vid = localStorage.getItem('consentia_vid');
+			if (!vid) {
+				vid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+				localStorage.setItem('consentia_vid', vid);
+			}
+		} catch (e) {
+			vid = 'anon-' + Date.now().toString(36);
+		}
+		return vid;
+	}
+
+	/* --------------------------------------------- script blocking ---- */
+
+	function activateScripts(consent) {
+		var nodes = document.querySelectorAll('script[data-consentia]');
+		Array.prototype.forEach.call(nodes, function (el) {
+			if (el.getAttribute('data-consentia-run')) {
 				return;
 			}
-			var fresh = document.createElement( 'script' );
-			Array.prototype.forEach.call( node.attributes, function ( attr ) {
-				if ( attr.name !== 'type' && attr.name !== 'data-consentia' ) {
-					fresh.setAttribute( attr.name, attr.value );
+			var required = (el.getAttribute('data-consentia') || '').split(/[\s,]+/).filter(Boolean);
+			if (!required.length) {
+				required = ['necessary'];
+			}
+			var ok = required.every(function (cat) {
+				return !!consent[cat];
+			});
+			if (!ok) {
+				return;
+			}
+			el.setAttribute('data-consentia-run', '1');
+			var clone = document.createElement('script');
+			for (var i = 0; i < el.attributes.length; i++) {
+				var attr = el.attributes[i];
+				if (attr.name !== 'type') {
+					clone.setAttribute(attr.name, attr.value);
 				}
-			} );
-			fresh.text = node.textContent;
-			node.parentNode.replaceChild( fresh, node );
-		} );
+			}
+			clone.textContent = el.textContent;
+			if (el.src) {
+				clone.src = el.src;
+				clone.async = true;
+			}
+			el.parentNode.replaceChild(clone, el);
+		});
 	}
 
-	function injectGa4() {
-		var id = settings.ga4_id;
-		if ( ! id || ! consent.analytics || document.getElementById( 'consentia-ga4' ) ) {
+	/* ------------------------------------------ Google Consent Mode ---- */
+
+	function consentSignals(consent) {
+		return {
+			ad_storage: consent.advertising ? 'granted' : 'denied',
+			ad_user_data: consent.advertising ? 'granted' : 'denied',
+			ad_personalization: consent.advertising ? 'granted' : 'denied',
+			analytics_storage: consent.analytics ? 'granted' : 'denied',
+			functionality_storage: consent.functional ? 'granted' : 'denied',
+			personalization_storage: consent.functional ? 'granted' : 'denied',
+			security_storage: 'granted'
+		};
+	}
+
+	function gtagReady() {
+		window.dataLayer = window.dataLayer || [];
+		window.gtag =
+			window.gtag ||
+			function () {
+				window.dataLayer.push(arguments);
+			};
+		return window.gtag;
+	}
+
+	function consentModeDefault() {
+		if (!settings.consent_mode) {
 			return;
 		}
-		var gtag = document.createElement( 'script' );
-		gtag.id  = 'consentia-ga4';
-		gtag.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent( id );
-		gtag.async = true;
-		document.head.appendChild( gtag );
-		var inline = document.createElement( 'script' );
-		inline.textContent =
-			'window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}' +
-			'gtag("js",new Date());gtag("config","' + id.replace( /"/g, '' ) + '");';
-		document.head.appendChild( inline );
+		var gtag = gtagReady();
+		var signals = consentSignals(buildConsent({}));
+		signals.wait_for_update = 500;
+		gtag('consent', 'default', signals);
 	}
 
-	function applyConsent( value, isFirst ) {
-		consent = value;
-		writeConsent( value );
-		var granted = { necessary: true, analytics: !! value.analytics, marketing: !! value.marketing };
-		activateScripts( granted );
-		if ( granted.analytics ) {
-			injectGa4();
+	function consentModeUpdate(consent) {
+		if (!settings.consent_mode) {
+			return;
 		}
-		var type = isFirst ? 'consentia:granted' : 'consentia:updated';
-		document.dispatchEvent( new CustomEvent( type, { detail: granted } ) );
-		updateStatusShortcodes( granted );
+		gtagReady()('consent', 'update', consentSignals(consent));
 	}
 
-	/* -------------------------------------------------- render ---- */
+	/* ------------------------------------------------------- GA4 ---- */
 
-	function el( tag, className, html ) {
-		var node = document.createElement( tag );
-		if ( className ) {
+	function injectGA(consent) {
+		if (!settings.ga_id || !consent.analytics || root.getAttribute('data-ga-done')) {
+			return;
+		}
+		root.setAttribute('data-ga-done', '1');
+		var gtag = gtagReady();
+		gtag('js', new Date());
+		gtag('config', settings.ga_id);
+		var s = document.createElement('script');
+		s.async = true;
+		s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(settings.ga_id);
+		document.head.appendChild(s);
+	}
+
+	/* ------------------------------------------------------- log ---- */
+
+	function sendLog(consent, source) {
+		if (!data.log_url || !window.fetch) {
+			return;
+		}
+		try {
+			fetch(data.log_url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					consent: consent,
+					source: source,
+					visitor_id: visitorId(),
+					consent_version: consentVersion
+				})
+			}).catch(function () {});
+		} catch (e) {
+			/* logging must never break the page */
+		}
+	}
+
+	/* ------------------------------------------- cross-domain sync ---- */
+
+	function broadcastSync(consent) {
+		var domains = data.sync_domains || [];
+		domains.forEach(function (origin) {
+			try {
+				var f = document.createElement('iframe');
+				f.style.display = 'none';
+				f.src = origin + '/?consentia-sync=1';
+				f.onload = function () {
+					try {
+						f.contentWindow.postMessage({ type: 'consentia-consent', consent: consent, v: consentVersion }, '*');
+					} catch (e) {}
+				};
+				document.body.appendChild(f);
+				setTimeout(function () {
+					if (f.parentNode) {
+						f.parentNode.removeChild(f);
+					}
+				}, 5000);
+			} catch (e) {}
+		});
+	}
+
+	window.addEventListener('message', function (e) {
+		var msg = e && e.data;
+		if (msg && msg.type === 'consentia-consent' && msg.consent && !decided) {
+			decide(buildConsent(msg.consent), 'sync');
+		}
+	});
+
+	/* ---------------------------------------------------- events ---- */
+
+	function emit(name, detail) {
+		document.dispatchEvent(new CustomEvent(name, { detail: detail }));
+	}
+
+	/* ------------------------------------------------------ DOM ---- */
+
+	function el(tag, className, text) {
+		var node = document.createElement(tag);
+		if (className) {
 			node.className = className;
 		}
-		if ( html ) {
-			node.innerHTML = html;
+		if (text) {
+			node.textContent = text;
 		}
 		return node;
 	}
 
-	function esc( str ) {
-		var div = document.createElement( 'div' );
-		div.appendChild( document.createTextNode( str || '' ) );
-		return div.innerHTML;
+	function button(className, label, onClick) {
+		var b = el('button', 'consentia-btn ' + className, label);
+		b.type = 'button';
+		b.addEventListener('click', onClick);
+		return b;
 	}
 
-	function buildBanner() {
-		var type = settings.banner_type === 'bar' ? 'bar' : 'card';
-		bannerEl = el( 'div', 'consentia-banner consentia-' + type + ' consentia-' + ( settings.position || 'bottom-left' ) );
-		bannerEl.setAttribute( 'role', 'dialog' );
-		bannerEl.setAttribute( 'aria-label', settings.title || 'Consentimiento de cookies' );
-		bannerEl.style.setProperty( '--consentia-bg', settings.bg_color );
-		bannerEl.style.setProperty( '--consentia-text', settings.text_color );
-		bannerEl.style.setProperty( '--consentia-accent', settings.accent_color );
-		bannerEl.style.setProperty( '--consentia-radius', ( settings.radius || 0 ) + 'px' );
+	root.style.setProperty('--consentia-bg', settings.bg_color || '#111827');
+	root.style.setProperty('--consentia-text', settings.text_color || '#f3f4f6');
+	root.style.setProperty('--consentia-accent', settings.accent_color || '#2f6fed');
+	root.style.setProperty('--consentia-radius', (settings.corner_radius || 0) + 'px');
 
-		var privacyLink = settings.privacy_url
-			? ' <a class="consentia-link" href="' + esc( settings.privacy_url ) + '">' + esc( 'Política de cookies' ) + '</a>'
-			: '';
+	var banner = el('div', 'consentia-banner consentia-' + (settings.banner_type || 'card') + ' consentia-' + (settings.position || 'bottom-left') + ' consentia-anim-' + (settings.animation || 'slide'));
+	banner.setAttribute('role', 'dialog');
+	banner.setAttribute('aria-label', settings.title || 'Cookies');
 
-		bannerEl.innerHTML =
-			'<div class="consentia-inner">' +
-				'<p class="consentia-title">' + esc( settings.title ) + '</p>' +
-				'<p class="consentia-message">' + esc( settings.message ) + privacyLink + '</p>' +
-				'<div class="consentia-actions">' +
-					'<button type="button" class="consentia-btn consentia-btn-accept">' + esc( settings.accept_label ) + '</button>' +
-					'<button type="button" class="consentia-btn consentia-btn-reject">' + esc( settings.reject_label ) + '</button>' +
-					'<button type="button" class="consentia-btn consentia-btn-prefs">' + esc( settings.prefs_label ) + '</button>' +
-				'</div>' +
-			'</div>';
+	var inner = el('div', 'consentia-inner');
 
-		document.getElementById( 'consentia-root' ).appendChild( bannerEl );
-
-		bannerEl.querySelector( '.consentia-btn-accept' ).addEventListener( 'click', function () {
-			applyConsent( { necessary: true, analytics: true, marketing: true, ts: Date.now() }, ! consent );
-			hideBanner();
-		} );
-		bannerEl.querySelector( '.consentia-btn-reject' ).addEventListener( 'click', function () {
-			applyConsent( { necessary: true, analytics: false, marketing: false, ts: Date.now() }, ! consent );
-			hideBanner();
-		} );
-		bannerEl.querySelector( '.consentia-btn-prefs' ).addEventListener( 'click', openPrefs );
-
-		requestAnimationFrame( function () {
-			bannerEl.classList.add( 'consentia-visible' );
-		} );
+	if (data.ccpa_scope) {
+		var p = el('p', 'consentia-message', settings.message);
+		inner.appendChild(p);
+		var actions = el('div', 'consentia-actions');
+		actions.appendChild(
+			button('consentia-btn-ccpa', settings.ccpa_do_not_sell || 'Do Not Sell or Share My Personal Information', function () {
+				openPrefs(true);
+			})
+		);
+		actions.appendChild(
+			button('consentia-btn-accept', settings.accept_label || 'OK', function () {
+				decide(allGranted(), 'accepted');
+			})
+		);
+		inner.appendChild(actions);
+	} else {
+		inner.appendChild(el('p', 'consentia-title', settings.title));
+		var msg = el('p', 'consentia-message');
+		msg.appendChild(document.createTextNode(settings.message + ' '));
+		if (settings.privacy_url) {
+			var a = el('a', 'consentia-link', settings.prefs_label ? 'Política de privacidad' : '');
+			a.href = settings.privacy_url;
+			msg.appendChild(a);
+			msg.appendChild(document.createTextNode(' '));
+		}
+		if (settings.cookies_url) {
+			var ac = el('a', 'consentia-link', 'Política de cookies');
+			ac.href = settings.cookies_url;
+			msg.appendChild(ac);
+		}
+		inner.appendChild(msg);
+		var acts = el('div', 'consentia-actions');
+		acts.appendChild(
+			button('consentia-btn-accept', settings.accept_label || 'Aceptar todas', function () {
+				decide(allGranted(), 'accepted');
+			})
+		);
+		acts.appendChild(
+			button('consentia-btn-reject', settings.reject_label || 'Rechazar', function () {
+				decide(buildConsent({}), 'rejected');
+			})
+		);
+		acts.appendChild(
+			button('consentia-btn-prefs', settings.prefs_label || 'Configurar', function () {
+				openPrefs(false);
+			})
+		);
+		inner.appendChild(acts);
 	}
 
-	function hideBanner() {
-		if ( ! bannerEl ) {
+	banner.appendChild(inner);
+	root.appendChild(banner);
+
+	/* ---------------------------------------------- revisit button ---- */
+
+	var revisit = el('button', 'consentia-revisit', '');
+	revisit.type = 'button';
+	revisit.setAttribute('aria-label', settings.prefs_label || 'Configurar cookies');
+	revisit.innerHTML =
+		'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+		'<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"/>' +
+		'<circle cx="14.5" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg>';
+	revisit.addEventListener('click', function () {
+		openPrefs(false);
+	});
+	revisit.hidden = true;
+	root.appendChild(revisit);
+
+	/* ----------------------------------------------- prefs panel ---- */
+
+	var prefs = null;
+	var lastFocus = null;
+	var toggles = buildConsent(state);
+
+	function openPrefs(optOutDefault) {
+		if (prefs) {
 			return;
 		}
-		bannerEl.classList.remove( 'consentia-visible' );
-		setTimeout( function () {
-			if ( bannerEl && bannerEl.parentNode ) {
-				bannerEl.parentNode.removeChild( bannerEl );
+		lastFocus = document.activeElement;
+		toggles = buildConsent(optOutDefault ? {} : state);
+
+		prefs = el('div', 'consentia-prefs');
+		prefs.setAttribute('role', 'dialog');
+		prefs.setAttribute('aria-modal', 'true');
+
+		var panel = el('div', 'consentia-prefs-panel');
+		var head = el('div', 'consentia-prefs-head');
+		head.appendChild(el('p', 'consentia-title', 'Preferencias de cookies'));
+		var close = button('consentia-btn-prefs consentia-close', '✕', closePrefs);
+		close.setAttribute('aria-label', 'Cerrar');
+		head.appendChild(close);
+		panel.appendChild(head);
+
+		Object.keys(categories).forEach(function (key) {
+			var cat = categories[key];
+			var row = el('label', 'consentia-pref-row' + (cat.locked ? ' consentia-locked' : ''));
+
+			var info = el('span', 'consentia-pref-info');
+			info.appendChild(el('strong', '', cat.label));
+			info.appendChild(el('small', '', cat.description));
+			row.appendChild(info);
+
+			var sw = el('span', 'consentia-switch');
+			var input = document.createElement('input');
+			input.type = 'checkbox';
+			input.checked = cat.locked ? true : !!toggles[key];
+			input.disabled = !!cat.locked;
+			input.setAttribute('aria-label', cat.label);
+			if (!cat.locked) {
+				input.addEventListener('change', function () {
+					toggles = buildConsent(toggles);
+					toggles[key] = input.checked;
+				});
 			}
-			bannerEl = null;
-		}, reduced ? 0 : 300 );
-	}
+			sw.appendChild(input);
+			sw.appendChild(el('span', 'consentia-switch-track'));
+			row.appendChild(sw);
 
-	function openPrefs() {
-		if ( prefsEl ) {
-			return;
+			panel.appendChild(row);
+		});
+
+		var save = button('consentia-btn-accept consentia-save', 'Guardar preferencias', function () {
+			var custom =
+				toggles.functional || toggles.analytics || toggles.performance || toggles.advertising
+					? 'custom'
+					: 'rejected';
+			decide(buildConsent(toggles), custom);
+		});
+		panel.appendChild(save);
+
+		prefs.appendChild(panel);
+		prefs.addEventListener('click', function (e) {
+			if (e.target === prefs) {
+				closePrefs();
+			}
+		});
+		root.appendChild(prefs);
+
+		requestAnimationFrame(function () {
+			prefs.classList.add('consentia-visible');
+		});
+
+		var first = panel.querySelector('input, button');
+		if (first) {
+			first.focus();
 		}
-		prefsEl = el( 'div', 'consentia-prefs consentia-visible' );
-		prefsEl.setAttribute( 'role', 'dialog' );
-		prefsEl.setAttribute( 'aria-modal', 'true' );
-		prefsEl.setAttribute( 'aria-label', 'Preferencias de cookies' );
-		prefsEl.style.setProperty( '--consentia-bg', settings.bg_color );
-		prefsEl.style.setProperty( '--consentia-text', settings.text_color );
-		prefsEl.style.setProperty( '--consentia-accent', settings.accent_color );
-		prefsEl.style.setProperty( '--consentia-radius', ( settings.radius || 0 ) + 'px' );
-
-		var rows = '';
-		Object.keys( cats ).forEach( function ( key ) {
-			var cat     = cats[ key ];
-			var locked  = !! cat.locked;
-			var checked = locked || ( consent ? !! consent[ key ] : false );
-			rows +=
-				'<label class="consentia-pref-row' + ( locked ? ' consentia-locked' : '' ) + '">' +
-					'<span>' +
-						'<strong>' + esc( cat.label ) + '</strong>' +
-						'<small>' + esc( cat.description ) + '</small>' +
-					'</span>' +
-					'<span class="consentia-switch">' +
-						'<input type="checkbox" data-cat="' + esc( key ) + '"' +
-							( checked ? ' checked' : '' ) + ( locked ? ' disabled' : '' ) + ' />' +
-						'<span class="consentia-switch-track" aria-hidden="true"></span>' +
-					'</span>' +
-				'</label>';
-		} );
-
-		prefsEl.innerHTML =
-			'<div class="consentia-prefs-panel">' +
-				'<p class="consentia-title">Preferencias de cookies</p>' +
-				rows +
-				'<div class="consentia-actions">' +
-					'<button type="button" class="consentia-btn consentia-btn-save">' + esc( 'Guardar preferencias' ) + '</button>' +
-					'<button type="button" class="consentia-btn consentia-btn-accept">' + esc( settings.accept_label ) + '</button>' +
-				'</div>' +
-			'</div>';
-
-		document.getElementById( 'consentia-root' ).appendChild( prefsEl );
-
-		prefsEl.querySelector( '.consentia-btn-save' ).addEventListener( 'click', savePrefs );
-		prefsEl.querySelector( '.consentia-btn-accept' ).addEventListener( 'click', function () {
-			applyConsent( { necessary: true, analytics: true, marketing: true, ts: Date.now() }, ! consent );
-			closePrefs();
-			hideBanner();
-		} );
-
-		var panel = prefsEl.querySelector( '.consentia-prefs-panel' );
-		document.addEventListener( 'keydown', onPrefsKey );
-		var firstInput = panel.querySelector( 'input, button' );
-		if ( firstInput ) {
-			firstInput.focus();
-		}
-	}
-
-	function onPrefsKey( event ) {
-		if ( event.key === 'Escape' ) {
-			closePrefs();
-		}
-	}
-
-	function savePrefs() {
-		var value = { necessary: true, ts: Date.now() };
-		prefsEl.querySelectorAll( 'input[data-cat]' ).forEach( function ( input ) {
-			value[ input.getAttribute( 'data-cat' ) ] = input.checked;
-		} );
-		applyConsent( value, ! consent );
-		closePrefs();
-		hideBanner();
 	}
 
 	function closePrefs() {
-		document.removeEventListener( 'keydown', onPrefsKey );
-		if ( prefsEl && prefsEl.parentNode ) {
-			prefsEl.parentNode.removeChild( prefsEl );
-		}
-		prefsEl = null;
-	}
-
-	function updateStatusShortcodes( granted ) {
-		var labels = [];
-		Object.keys( granted ).forEach( function ( key ) {
-			if ( granted[ key ] && cats[ key ] ) {
-				labels.push( cats[ key ].label );
-			}
-		} );
-		document.querySelectorAll( '[data-consentia-status]' ).forEach( function ( node ) {
-			node.textContent = labels.join( ' · ' );
-		} );
-	}
-
-	/* ---------------------------------------------------- boot ---- */
-
-	function bindOpenButtons() {
-		document.addEventListener( 'click', function ( event ) {
-			var target = event.target.closest ? event.target.closest( '[data-consentia-open]' ) : null;
-			if ( target ) {
-				openPrefs();
-			}
-		} );
-	}
-
-	function boot() {
-		bindOpenButtons();
-
-		if ( consent ) {
-			// Returning visitor: silently apply the saved decision.
-			applyConsent( consent, false );
+		if (!prefs) {
 			return;
 		}
-
-		var delay = parseInt( settings.delay_ms, 10 ) || 0;
-		setTimeout( buildBanner, reduced ? 0 : delay );
+		prefs.classList.remove('consentia-visible');
+		var node = prefs;
+		prefs = null;
+		setTimeout(function () {
+			if (node.parentNode) {
+				node.parentNode.removeChild(node);
+			}
+		}, 250);
+		if (lastFocus && lastFocus.focus) {
+			lastFocus.focus();
+		}
 	}
 
-	if ( document.readyState === 'loading' ) {
-		document.addEventListener( 'DOMContentLoaded', boot );
+	document.addEventListener('keydown', function (e) {
+		if (e.key === 'Escape' && prefs) {
+			closePrefs();
+		}
+	});
+
+	// [consentia_manage] shortcode buttons.
+	document.addEventListener('click', function (e) {
+		var t = e.target;
+		if (t && t.closest && t.closest('[data-consentia-open]')) {
+			openPrefs(false);
+		}
+	});
+
+	/* -------------------------------------------------- decide ---- */
+
+	function decide(consent, source) {
+		var firstDecision = !decided && source !== 'sync';
+		decided = true;
+		state = buildConsent(consent);
+
+		writeStored(state);
+		consentModeUpdate(state);
+		activateScripts(state);
+		injectGA(state);
+		sendLog(state, source);
+		broadcastSync(state);
+
+		banner.classList.remove('consentia-visible');
+		setTimeout(function () {
+			banner.hidden = true;
+		}, 320);
+
+		if (settings.revisit_button) {
+			revisit.hidden = false;
+			revisit.classList.add('consentia-revisit-in');
+		}
+
+		closePrefs();
+		updateStatusShortcode();
+
+		if (firstDecision) {
+			emit('consentia:granted', state);
+		}
+		emit('consentia:updated', state);
+	}
+
+	function updateStatusShortcode() {
+		var nodes = document.querySelectorAll('[data-consentia-status]');
+		Array.prototype.forEach.call(nodes, function (n) {
+			var parts = ['Necesarias: sí'];
+			['functional', 'analytics', 'performance', 'advertising'].forEach(function (k) {
+				if (categories[k]) {
+					parts.push(categories[k].label + ': ' + (state[k] ? 'sí' : 'no'));
+				}
+			});
+			n.textContent = parts.join(' · ');
+		});
+	}
+
+	/* --------------------------------------------------- init ---- */
+
+	consentModeDefault();
+
+	var stored = readStored();
+
+	if (stored) {
+		decided = true;
+		state = stored;
+		consentModeUpdate(state);
+		activateScripts(state);
+		injectGA(state);
+		updateStatusShortcode();
+		if (settings.revisit_button) {
+			revisit.hidden = false;
+			revisit.classList.add('consentia-revisit-in');
+		}
+		emit('consentia:ready', state);
+	} else if (data.gpc && (navigator.globalPrivacyControl === true || navigator.globalPrivacyControl === '1')) {
+		// Global Privacy Control: register an opt-out, no banner.
+		decide(buildConsent({}), 'gpc');
 	} else {
-		boot();
+		var delay = parseInt(settings.show_delay_ms || 0, 10);
+		setTimeout(function () {
+			banner.classList.add('consentia-visible');
+		}, Math.max(0, delay));
 	}
 
-	/* ----------------------------------------------------- API ---- */
+	/* ------------------------------------------------------ API ---- */
 
 	window.Consentia = {
-		open: openPrefs,
+		version: '1.1.0',
+		open: function () {
+			openPrefs(false);
+		},
 		close: closePrefs,
 		status: function () {
-			return consent || null;
+			return Object.assign({ decided: decided }, state);
 		},
-		showBanner: buildBanner
+		reset: function () {
+			document.cookie = COOKIE + '=; path=/; max-age=0';
+			try {
+				localStorage.removeItem(COOKIE);
+			} catch (e) {}
+			window.location.reload();
+		}
 	};
-} )();
+})();

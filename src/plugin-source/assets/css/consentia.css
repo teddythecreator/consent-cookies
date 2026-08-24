@@ -146,6 +146,90 @@
 	padding-right: 4px;
 }
 
+/* ------------------------------------------- floating pill ---- */
+
+.consentia-banner.consentia-floating {
+	max-width: 460px;
+	border-radius: 999px;
+	padding: 12px 18px;
+	transform: translateY(16px);
+}
+
+.consentia-banner.consentia-floating .consentia-inner {
+	flex-direction: row;
+	align-items: center;
+	gap: 14px;
+}
+
+.consentia-banner.consentia-floating .consentia-title {
+	display: none;
+}
+
+.consentia-banner.consentia-floating .consentia-message {
+	flex: 1;
+	font-size: 12.5px;
+}
+
+.consentia-banner.consentia-floating .consentia-btn {
+	padding: 8px 14px;
+	white-space: nowrap;
+}
+
+.consentia-banner.consentia-floating.consentia-bottom-left   { left: 16px;  bottom: 16px; }
+.consentia-banner.consentia-floating.consentia-bottom-right  { right: 16px; bottom: 16px; }
+.consentia-banner.consentia-floating.consentia-bottom-center { left: 50%; bottom: 16px; margin-left: -230px; }
+
+/* ---------------------------------------------------- CCPA ---- */
+
+.consentia-btn-ccpa {
+	background: var(--consentia-accent);
+	color: #fff;
+}
+
+.consentia-banner .consentia-message a,
+.consentia-btn-prefs {
+	color: inherit;
+}
+
+/* ------------------------------------------- revisit button ---- */
+
+.consentia-revisit {
+	position: fixed;
+	z-index: 999989;
+	left: 18px;
+	bottom: 18px;
+	width: 44px;
+	height: 44px;
+	display: grid;
+	place-items: center;
+	border: 0;
+	border-radius: 50%;
+	cursor: pointer;
+	background: var(--consentia-accent);
+	color: #fff;
+	box-shadow: 0 8px 24px rgba(2, 6, 18, 0.35);
+	opacity: 0;
+	transform: scale(0.6);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.consentia-revisit:not([hidden]) {
+	opacity: 1;
+}
+
+.consentia-revisit.consentia-revisit-in {
+	transform: scale(1);
+}
+
+.consentia-revisit:hover {
+	transform: scale(1.08);
+}
+
+.consentia-revisit:focus-visible {
+	outline: 2px solid var(--consentia-text);
+	outline-offset: 3px;
+}
+
 /* ----------------------------------------------------- prefs ---- */
 
 .consentia-prefs {
@@ -275,6 +359,14 @@
 		bottom: 12px;
 		max-width: none;
 		margin-left: 0;
+	}
+
+	.consentia-banner.consentia-floating {
+		left: 12px;
+		right: 12px;
+		max-width: none;
+		margin-left: 0;
+		border-radius: var(--consentia-radius);
 	}
 
 	.consentia-banner.consentia-bar .consentia-inner {

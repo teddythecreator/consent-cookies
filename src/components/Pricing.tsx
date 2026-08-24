@@ -1,22 +1,24 @@
 import { DownloadButton, Icons, Reveal, SectionHeading, useToast } from "./shared";
 
 const FREE_FEATURES = [
-  "Banner tarjeta o barra, 4 posiciones",
-  "Bloqueo de scripts por categoría",
-  "Panel de preferencias granular",
-  "Inyección automática de GA4",
-  "Personalización completa con vista previa",
-  "Shortcodes y API de JavaScript",
+  "Banner tarjeta, barra o píldora · 4 posiciones",
+  "Bloqueo real por 5 categorías + panel granular",
+  "Escáner de cookies y scripts de terceros",
+  "Registro de consentimiento con CSV y retención",
+  "Google Consent Mode v2 (básico y avanzado)",
+  "IAB TCF v2.2 con TC string",
+  "CCPA / «Do Not Sell» y Global Privacy Control",
+  "Geolocalización UE/EEA/UK + sync entre dominios",
+  "GA4 automático, shortcodes, API y estadísticas",
   "Multisitio, WPML y traducción ES",
-  "Actualizaciones y soporte en el foro",
 ];
 
 const PRO_FEATURES = [
-  "Registro de consentimiento exportable (CSV)",
-  "Geolocalización: banner solo en UE/UK",
-  "Bloqueo automático de scripts conocidos",
-  "Compatibilidad TCF 2.2",
-  "Temas multi-marca por sitio",
+  "Escaneos cloud semanales con alertas",
+  "GVL completa: consentimiento por vendor (TCF)",
+  "White-label: sin marca Consentia",
+  "Sincronización entre dominios ilimitada",
+  "Informes multi-sitio para agencias",
   "Soporte prioritario por correo",
 ];
 
@@ -92,7 +94,7 @@ export default function Pricing() {
             </div>
             <p className="mt-2 text-[14px] text-mist">Cumplimiento con pruebas, no con promesas.</p>
             <p className="mt-5 font-display text-[44px] font-extrabold tracking-tight text-snow">
-              39 €<span className="ml-1 text-[18px] font-semibold text-mist">/año</span>
+              49 €<span className="ml-1 text-[18px] font-semibold text-mist">/año</span>
               <span className="ml-2 align-middle font-mono text-[11px] font-normal uppercase tracking-widest text-faint">1 sitio</span>
             </p>
             <ul className="mt-6 flex-1 space-y-3">

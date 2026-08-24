@@ -2,71 +2,177 @@
 /**
  * Plugin Name:       Consentia – Cookie Consent & GDPR
  * Plugin URI:        https://consentia.dev/
- * Description:       Lightweight cookie consent banner for GDPR & ePrivacy. Blocks non-essential scripts until the visitor decides. Fully customizable, accessible, no jQuery, multisite compatible.
- * Version:           1.0.0
- * Requires at least: 6.0
- * Tested up to:      6.7
- * Requires PHP:      7.4
- * Author:            Consentia Team
- * Author URI:        https://consentia.dev/
+ * Description:       Consentimiento de cookies autoalojado: banner con bloqueo real de scripts, escáner de cookies, registro de consentimiento, Google Consent Mode v2, IAB TCF v2.2, CCPA/CPRA, geolocalización y sincronización entre dominios. Sin SaaS, sin límites de visitas.
+ * Version:           1.1.0
+ * Author:            Thecreator.business
+ * Author URI:        https://thecreator.business/
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       consentia
- * Domain Path:       /languages
+ * Requires at least: 6.0
+ * Requires PHP:      7.4
  *
  * @package Consentia
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CONSENTIA_VERSION', '1.0.0' );
+define( 'CONSENTIA_VERSION', '1.1.0' );
 define( 'CONSENTIA_FILE', __FILE__ );
-define( 'CONSENTIA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CONSENTIA_URL', plugin_dir_url( __FILE__ ) );
-define( 'CONSENTIA_OPTION', 'consentia_settings' );
+define( 'CONSENTIA_PATH', plugin_dir_path( __FILE__ ) );
 
 require_once CONSENTIA_PATH . 'includes/class-consentia-settings.php';
+require_once CONSENTIA_PATH . 'includes/class-consentia-logger.php';
+require_once CONSENTIA_PATH . 'includes/class-consentia-scanner.php';
+require_once CONSENTIA_PATH . 'includes/class-consentia-geo.php';
 require_once CONSENTIA_PATH . 'includes/class-consentia-frontend.php';
 
 /**
- * Activation hook: seed default options and flag the first-run notice.
- *
- * @return void
+ * Main plugin bootstrap.
  */
-function consentia_activate() {
-	if ( false === get_option( CONSENTIA_OPTION ) ) {
-		add_option( CONSENTIA_OPTION, Consentia_Settings::defaults(), '', false );
+final class Consentia {
+
+	/**
+	 * Singleton instance.
+	 *
+	 * @var Consentia|null
+	 */
+	private static $instance = null;
+
+	/**
+	 * Module: settings.
+	 *
+	 * @var Consentia_Settings
+	 */
+	public $settings;
+
+	/**
+	 * Module: consent log.
+	 *
+	 * @var Consentia_Logger
+	 */
+	public $logger;
+
+	/**
+	 * Module: cookie scanner.
+	 *
+	 * @var Consentia_Scanner
+	 */
+	public $scanner;
+
+	/**
+	 * Module: visitor geolocation.
+	 *
+	 * @var Consentia_Geo
+	 */
+	public $geo;
+
+	/**
+	 * Module: frontend output.
+	 *
+	 * @var Consentia_Frontend
+	 */
+	public $frontend;
+
+	/**
+	 * Returns the singleton instance.
+	 *
+	 * @return Consentia
+	 */
+	public static function instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
 	}
-	add_option( 'consentia_first_run', 1 );
+
+	/**
+	 * Wires every module.
+	 */
+	private function __construct() {
+		$this->settings = Consentia_Settings::instance();
+		$this->logger   = Consentia_Logger::instance();
+		$this->scanner  = Consentia_Scanner::instance();
+		$this->geo      = Consentia_Geo::instance();
+		$this->frontend = Consentia_Frontend::instance();
+
+		register_activation_hook( CONSENTIA_FILE, array( $this, 'activate' ) );
+		register_deactivation_hook( CONSENTIA_FILE, array( $this, 'deactivate' ) );
+
+		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+		add_filter( 'plugin_action_links_' . plugin_basename( CONSENTIA_FILE ), array( $this, 'action_links' ) );
+		add_action( 'admin_notices', array( $this, 'first_run_notice' ) );
+	}
+
+	/**
+	 * On activation: default options + consent log table.
+	 *
+	 * @return void
+	 */
+	public function activate() {
+		Consentia_Settings::install_defaults();
+		Consentia_Logger::create_table();
+	}
+
+	/**
+	 * On deactivation: remove the scheduled cleanup cron.
+	 *
+	 * @return void
+	 */
+	public function deactivate() {
+		wp_clear_scheduled_hook( 'consentia_daily_cleanup' );
+	}
+
+	/**
+	 * Loads the translation files.
+	 *
+	 * @return void
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain( 'consentia', false, dirname( plugin_basename( CONSENTIA_FILE ) ) . '/languages' );
+	}
+
+	/**
+	 * Adds a shortcut to the settings screen.
+	 *
+	 * @param array $links Existing row links.
+	 * @return array
+	 */
+	public function action_links( $links ) {
+		$url     = admin_url( 'options-general.php?page=consentia' );
+		$links[] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Ajustes', 'consentia' ) . '</a>';
+		return $links;
+	}
+
+	/**
+	 * Friendly notice after the first activation.
+	 *
+	 * @return void
+	 */
+	public function first_run_notice() {
+		if ( ! get_option( 'consentia_first_run' ) ) {
+			return;
+		}
+
+		$url = admin_url( 'options-general.php?page=consentia' );
+		printf(
+			'<div class="notice notice-success is-dismissible"><p><strong>Consentia</strong> %s — %s <a href="%s">%s →</a></p></div>',
+			esc_html( CONSENTIA_VERSION ),
+			esc_html__( 'está activo. Personaliza el banner, lanza el escáner de cookies y revisa el registro de consentimiento en', 'consentia' ),
+			esc_url( $url ),
+			esc_html__( 'Ajustes → Consentia', 'consentia' )
+		);
+	}
 }
-register_activation_hook( CONSENTIA_FILE, 'consentia_activate' );
 
 /**
- * Bootstrap the plugin once all plugins are loaded.
+ * Global accessor.
  *
- * @return void
+ * @return Consentia
  */
-function consentia_boot() {
-	load_plugin_textdomain( 'consentia', false, dirname( plugin_basename( CONSENTIA_FILE ) ) . '/languages' );
-	Consentia_Settings::instance();
-	Consentia_Frontend::instance();
+function consentia() {
+	return Consentia::instance();
 }
-add_action( 'plugins_loaded', 'consentia_boot' );
 
-/**
- * Dismissible first-run notice pointing to the settings page.
- *
- * @return void
- */
-function consentia_admin_notice() {
-	if ( ! get_option( 'consentia_first_run' ) || ! current_user_can( 'manage_options' ) ) {
-		return;
-	}
-	printf(
-		'<div class="notice notice-success is-dismissible"><p>%s <a href="%s"><strong>%s</strong></a></p></div>',
-		esc_html__( 'Consentia está activo. Personaliza tu banner de cookies en', 'consentia' ),
-		esc_url( admin_url( 'options-general.php?page=consentia' ) ),
-		esc_html__( 'Ajustes → Consentia', 'consentia' )
-	);
-}
-add_action( 'admin_notices', 'consentia_admin_notice' );
+consentia();

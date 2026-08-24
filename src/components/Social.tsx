@@ -100,11 +100,23 @@ export function Reviews() {
 const FAQS = [
   {
     q: "¿Es gratis de verdad o hay trampa?",
-    a: "Gratis de verdad, bajo licencia GPLv2 o posterior: el código es tuyo, para siempre y sin límite de sitios. La edición Pro añade herramientas opcionales de cumplimiento (registro de consentimiento, geolocalización, TCF 2.2) para quien las necesite, pero el plugin base no se recorta.",
+    a: "Gratis de verdad, bajo licencia GPLv2 o posterior: el código es tuyo, para siempre, sin límite de sitios ni de visitas. El escáner, el registro de consentimiento, Consent Mode v2, TCF, CCPA y la geolocalización están incluidos. Consentia Pro (escaneos cloud, GVL completa, white-label) es opcional.",
+  },
+  {
+    q: "¿En qué se diferencia de CookieYes u otras CMP?",
+    a: "En una cosa fundamental: Consentia es autoalojado. No hay SaaS, ni cuentas, ni API keys, ni un SDK cargando desde servidores de terceros. Las decisiones de tus visitantes se guardan en tu propia base de datos (tabla wp_consentia_log) y el banner pesa ~12 KB sin ninguna petición externa. Y lo que otras CMP cobran en planes Business aquí viene gratis.",
+  },
+  {
+    q: "¿Qué hace exactamente el escáner de cookies?",
+    a: "Audita tu sitio en dos pasadas: las cookies presentes en el servidor ($_COOKIE) y en el navegador (document.cookie), más los scripts de terceros conocidos (GA4, Meta Pixel, Hotjar, Clarity, TikTok, DoubleClick, chats…). Clasifica cada elemento contra una base de patrones y te deja reclasificarlo y guardarlo para redactar tu política de cookies.",
+  },
+  {
+    q: "¿Sirve el registro como prueba de cumplimiento?",
+    a: "Sí. Cada decisión se guarda con UUID, fecha/hora, categorías aceptadas, origen (banner, GPC, sincronización) y país, en una tabla propia de tu WordPress. Puedes exportarlo a CSV y la retención se limpia sola según los días que configures.",
   },
   {
     q: "¿Bloquea realmente Google Analytics y el píxel de Meta?",
-    a: "Sí. Marca cada snippet con type=\"text/plain\" y data-consentia=\"analytics\" (o \"marketing\") y Consentia no lo ejecutará hasta que haya consentimiento. Para GA4 ni eso hace falta: escribe tu ID G-XXXXXXX en Ajustes → Consentia y el plugin inyecta gtag.js solo cuando se aceptan las analíticas.",
+    a: "Sí. Marca cada snippet con type=\"text/plain\" y data-consentia=\"analytics\" (o \"advertising\") y Consentia no lo ejecutará hasta que haya consentimiento. Para GA4 ni eso hace falta: escribe tu ID G-XXXXXXX en Ajustes → Consentia y el plugin inyecta gtag.js solo cuando se aceptan las analíticas.",
   },
   {
     q: "¿Funciona con plugins de caché como WP Rocket o LiteSpeed?",

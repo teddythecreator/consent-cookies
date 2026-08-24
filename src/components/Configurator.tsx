@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Icons, Reveal, SectionHeading } from "./shared";
+import { Icons, Reveal, SectionHeading, useToast } from "./shared";
 import {
   ConsentChips,
   CookieDemo,
@@ -8,7 +8,7 @@ import {
   type ConsentState,
 } from "./CookieDemo";
 
-const STORAGE_KEY = "consentia-demo-config";
+const STORAGE_KEY = "consentia-demo-config-v2";
 
 function loadConfig(): BannerConfig {
   try {
@@ -62,6 +62,28 @@ function Segmented<T extends string>({
   );
 }
 
+function Switch({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-line bg-ink px-3.5 py-3 transition-colors duration-200 hover:border-azure/40">
+      <span className="min-w-0">
+        <span className="block text-[13.5px] font-semibold text-snow">{label}</span>
+        <span className="block text-[11.5px] leading-snug text-faint">{desc}</span>
+      </span>
+      <span className="relative shrink-0">
+        <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <span
+          className={`block h-[22px] w-[40px] rounded-full transition-colors duration-200 ${checked ? "bg-deep" : "bg-line"}`}
+        />
+        <span
+          className={`absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+            checked ? "translate-x-[18px]" : ""
+          }`}
+        />
+      </span>
+    </label>
+  );
+}
+
 /* ---------------------------------------------------- configurator ---- */
 
 export default function Configurator() {
@@ -69,6 +91,7 @@ export default function Configurator() {
   const [replayKey, setReplayKey] = useState(0);
   const [consent, setConsent] = useState<ConsentState | null>(null);
   const [variant, setVariant] = useState<"cafe" | "shop">("cafe");
+  const toast = useToast();
   const firstRun = useRef(true);
 
   // persist + debounce replay so the preview animates in after each edit
@@ -92,6 +115,15 @@ export default function Configurator() {
   const rangeFill = (value: number, min: number, max: number) =>
     ({ "--range-fill": `${((value - min) / (max - min)) * 100}%` } as React.CSSProperties);
 
+  const copyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+      toast("Configuración copiada como JSON.");
+    } catch {
+      toast("No se pudo copiar en este navegador.");
+    }
+  };
+
   return (
     <section id="configurador" className="relative scroll-mt-24 py-24">
       <div className="mx-auto max-w-6xl px-5">
@@ -102,7 +134,7 @@ export default function Configurator() {
               Diseña tu banner aquí. <span className="text-azure">Tal cual</span> se verá en WordPress.
             </>
           }
-          sub="Los mismos controles de Ajustes → Consentia, pero con vista previa instantánea. Tu configuración se guarda en el navegador y el banner se reproduce de nuevo con cada cambio."
+          sub="Los mismos controles de Ajustes → Consentia, ahora también con las opciones de cumplimiento: Consent Mode v2, TCF, CCPA, GPC y botón revisit. Tu configuración se guarda en el navegador."
         />
 
         <div className="mt-12 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
@@ -110,47 +142,62 @@ export default function Configurator() {
           <Reveal className="h-fit rounded-xl border border-line bg-card/60 p-6 lg:sticky lg:top-24">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-[17px] font-bold text-snow">Ajustes del banner</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfig(DEFAULT_CONFIG);
-                  setReplayKey((k) => k + 1);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-[11px] text-mist transition-colors hover:border-coral hover:text-coral"
-              >
-                <Icons.refresh className="h-3.5 w-3.5" />
-                restablecer
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={copyJson}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-[11px] text-mist transition-colors hover:border-azure hover:text-azure"
+                >
+                  <Icons.copy className="h-3 w-3" />
+                  JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfig(DEFAULT_CONFIG);
+                    setReplayKey((k) => k + 1);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 font-mono text-[11px] text-mist transition-colors hover:border-coral hover:text-coral"
+                >
+                  <Icons.refresh className="h-3 w-3" />
+                  Restaurar
+                </button>
+              </div>
             </div>
 
-            <div className="mt-6 space-y-6">
-              <div className="space-y-2">
+            <div className="mt-5 space-y-5">
+              <div>
                 <ControlLabel>Formato</ControlLabel>
-                <Segmented
-                  value={config.type}
-                  options={[
-                    { value: "card", label: "Tarjeta" },
-                    { value: "bar", label: "Barra" },
-                  ]}
-                  onChange={(v) => set("type", v)}
-                />
+                <div className="mt-2">
+                  <Segmented
+                    value={config.type}
+                    options={[
+                      { value: "card", label: "Tarjeta" },
+                      { value: "bar", label: "Barra" },
+                      { value: "floating", label: "Píldora" },
+                    ]}
+                    onChange={(v) => set("type", v)}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
+              <div>
                 <ControlLabel>Posición</ControlLabel>
-                <Segmented
-                  value={config.position}
-                  options={[
-                    { value: "bottom-left", label: "↙" },
-                    { value: "bottom-right", label: "↘" },
-                    { value: "bottom-center", label: "↓" },
-                    { value: "top", label: "↑" },
-                  ]}
-                  onChange={(v) => set("position", v)}
-                />
+                <div className="mt-2">
+                  <Segmented
+                    value={config.position}
+                    options={[
+                      { value: "bottom-left", label: "↙" },
+                      { value: "bottom-right", label: "↘" },
+                      { value: "bottom-center", label: "↓" },
+                      { value: "top", label: "↑" },
+                    ]}
+                    onChange={(v) => set("position", v)}
+                  />
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 {(
                   [
                     ["bg", "Fondo"],
@@ -158,88 +205,134 @@ export default function Configurator() {
                     ["accent", "Acento"],
                   ] as const
                 ).map(([key, label]) => (
-                  <div key={key} className="space-y-2">
+                  <div key={key}>
                     <ControlLabel>{label}</ControlLabel>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={config[key]}
-                        onChange={(e) => set(key, e.target.value)}
-                        aria-label={`Color de ${label.toLowerCase()}`}
-                      />
+                    <div className="mt-2 flex items-center gap-2">
+                      <input type="color" value={config[key]} onChange={(e) => set(key, e.target.value)} aria-label={`Color de ${label.toLowerCase()}`} />
                       <code className="font-mono text-[11px] text-faint">{config[key]}</code>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-2">
-                <ControlLabel hint={`${config.radius}px`}>Radio de esquina</ControlLabel>
-                <input
-                  type="range"
-                  min={0}
-                  max={28}
-                  value={config.radius}
-                  style={rangeFill(config.radius, 0, 28)}
-                  onChange={(e) => set("radius", Number(e.target.value))}
-                  aria-label="Radio de esquina en píxeles"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <ControlLabel hint={`${config.radius}px`}>Radio</ControlLabel>
+                  <input
+                    type="range"
+                    min={0}
+                    max={40}
+                    value={config.radius}
+                    onChange={(e) => set("radius", Number(e.target.value))}
+                    className="mt-3"
+                    style={rangeFill(config.radius, 0, 40)}
+                    aria-label="Radio de esquina"
+                  />
+                </div>
+                <div>
+                  <ControlLabel hint={`${config.delayMs}ms`}>Retraso</ControlLabel>
+                  <input
+                    type="range"
+                    min={0}
+                    max={3000}
+                    step={100}
+                    value={config.delayMs}
+                    onChange={(e) => set("delayMs", Number(e.target.value))}
+                    className="mt-3"
+                    style={rangeFill(config.delayMs, 0, 3000)}
+                    aria-label="Retraso de aparición"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <ControlLabel hint={`${config.delayMs} ms`}>Retraso de aparición</ControlLabel>
-                <input
-                  type="range"
-                  min={0}
-                  max={2000}
-                  step={100}
-                  value={config.delayMs}
-                  style={rangeFill(config.delayMs, 0, 2000)}
-                  onChange={(e) => set("delayMs", Number(e.target.value))}
-                  aria-label="Retraso de aparición en milisegundos"
-                />
-              </div>
-
-              <div className="space-y-2">
+              <div>
                 <ControlLabel>Título</ControlLabel>
-                <input className={inputCls} value={config.title} onChange={(e) => set("title", e.target.value)} maxLength={60} />
+                <input className={`mt-2 ${inputCls}`} value={config.title} onChange={(e) => set("title", e.target.value)} />
               </div>
-
-              <div className="space-y-2">
+              <div>
                 <ControlLabel>Mensaje</ControlLabel>
                 <textarea
-                  className={`${inputCls} resize-none`}
+                  className={`mt-2 ${inputCls} resize-none`}
                   rows={3}
                   value={config.message}
                   onChange={(e) => set("message", e.target.value)}
-                  maxLength={280}
                 />
               </div>
-
               <div className="grid grid-cols-3 gap-3">
-                {(
-                  [
-                    ["acceptLabel", "Aceptar"],
-                    ["rejectLabel", "Rechazar"],
-                    ["prefsLabel", "Configurar"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key} className="space-y-2">
-                    <ControlLabel>{label}</ControlLabel>
-                    <input className={inputCls} value={config[key]} onChange={(e) => set(key, e.target.value)} maxLength={20} />
-                  </div>
-                ))}
+                <div>
+                  <ControlLabel>Aceptar</ControlLabel>
+                  <input className={`mt-2 ${inputCls}`} value={config.acceptLabel} onChange={(e) => set("acceptLabel", e.target.value)} />
+                </div>
+                <div>
+                  <ControlLabel>Rechazar</ControlLabel>
+                  <input className={`mt-2 ${inputCls}`} value={config.rejectLabel} onChange={(e) => set("rejectLabel", e.target.value)} />
+                </div>
+                <div>
+                  <ControlLabel>Configurar</ControlLabel>
+                  <input className={`mt-2 ${inputCls}`} value={config.prefsLabel} onChange={(e) => set("prefsLabel", e.target.value)} />
+                </div>
+              </div>
+
+              <div className="border-t border-line-soft pt-5">
+                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-azure">Cumplimiento</p>
+                <div className="mt-3 space-y-2">
+                  <Switch
+                    label="Google Consent Mode v2"
+                    desc="Señales ad_storage, analytics_storage, ad_user_data…"
+                    checked={config.consentMode}
+                    onChange={(v) => set("consentMode", v)}
+                  />
+                  <Switch
+                    label="IAB TCF v2.2"
+                    desc="API __tcfapi + TC string con el consentimiento"
+                    checked={config.tcf}
+                    onChange={(v) => set("tcf", v)}
+                  />
+                  <Switch
+                    label="CCPA / CPRA (California)"
+                    desc="Enlace «No vender ni compartir» + modo opt-out"
+                    checked={config.ccpa}
+                    onChange={(v) => set("ccpa", v)}
+                  />
+                  <Switch
+                    label="Botón revisit"
+                    desc="Reabre las preferencias desde cualquier página"
+                    checked={config.revisit}
+                    onChange={(v) => set("revisit", v)}
+                  />
+                </div>
+                <p className="mt-3 rounded-lg bg-ink px-3 py-2.5 text-[11.5px] leading-relaxed text-faint">
+                  También incluidos en el plugin (sin demo aquí): respeto a <strong className="text-mist">Global Privacy Control</strong>,
+                  geolocalización UE/EEA/UK, sincronización entre dominios y renovación del consentimiento.
+                </p>
               </div>
             </div>
           </Reveal>
 
-          {/* preview */}
-          <Reveal delay={140}>
-            <div className="rounded-xl border border-line bg-card/60 p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Sitio de prueba:</span>
-                  <div className="grid grid-flow-col gap-1 rounded-lg border border-line bg-ink p-1">
+          {/* live preview */}
+          <div className="space-y-4">
+            <Reveal delay={140}>
+              <CookieDemo
+                config={config}
+                replayKey={replayKey}
+                variant={variant}
+                height="h-[380px]"
+                onConsent={setConsent}
+              />
+            </Reveal>
+
+            <Reveal delay={220}>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card/60 px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setReplayKey((k) => k + 1)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-2 font-mono text-[11.5px] text-mist transition-colors hover:border-azure hover:text-azure"
+                  >
+                    <Icons.refresh className="h-3.5 w-3.5" />
+                    Reproducir banner
+                  </button>
+                  <div className="flex rounded-lg border border-line bg-ink p-1">
                     {(
                       [
                         ["cafe", "Cafetería"],
@@ -250,8 +343,8 @@ export default function Configurator() {
                         key={v}
                         type="button"
                         onClick={() => setVariant(v)}
-                        className={`rounded-md px-2.5 py-1 text-[12px] font-semibold transition-colors duration-200 ${
-                          variant === v ? "bg-ink-3 text-azure" : "text-faint hover:text-mist"
+                        className={`rounded-md px-3 py-1.5 font-mono text-[11px] transition-all duration-200 ${
+                          variant === v ? "bg-ink-3 text-snow" : "text-faint hover:text-mist"
                         }`}
                         aria-pressed={variant === v}
                       >
@@ -260,29 +353,21 @@ export default function Configurator() {
                     ))}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setReplayKey((k) => k + 1)}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-deep/15 px-3 py-1.5 font-mono text-[11.5px] font-semibold text-azure ring-1 ring-deep/40 transition-all duration-200 hover:bg-deep hover:text-white"
-                >
-                  <Icons.play className="h-3 w-3" />
-                  reproducir de nuevo
-                </button>
+                <p className="font-mono text-[10.5px] uppercase tracking-wider text-faint">Estado en tiempo real</p>
               </div>
+            </Reveal>
 
-              <CookieDemo config={config} replayKey={replayKey} variant={variant} height="h-[400px]" onConsent={setConsent} showReplay={false} />
-
-              <div className="mt-5 space-y-3 border-t border-line-soft pt-5">
-                <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Estado del consentimiento</p>
+            <Reveal delay={290}>
+              <div className="rounded-xl border border-line bg-card/60 px-4 py-4">
                 <ConsentChips consent={consent} />
-                <p className="text-[12.5px] leading-relaxed text-faint">
-                  En producción, la decisión se guarda en la cookie <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[11px] text-azure">consentia</code>{" "}
-                  durante 6 meses (renovación configurable de 1 a 24) y los scripts con{" "}
-                  <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[11px] text-azure">data-consentia</code> se activan sin recargar la página.
+                <p className="mt-3 font-mono text-[11px] leading-relaxed text-faint">
+                  {consent
+                    ? "// decisión enviada a POST /wp-json/consentia/v1/log con UUID, fecha y origen"
+                    : "// sin decisión: los scripts data-consentia siguen bloqueados"}
                 </p>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          </div>
         </div>
       </div>
     </section>

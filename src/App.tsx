@@ -2,6 +2,7 @@ import Nav from "./components/Nav";
 import Hero from "./components/Hero";
 import Configurator from "./components/Configurator";
 import Features from "./components/Features";
+import Comparison from "./components/Comparison";
 import CodeShowcase from "./components/CodeShowcase";
 import Pricing from "./components/Pricing";
 import { Faq, Reviews } from "./components/Social";
@@ -48,6 +49,7 @@ export default function App() {
             <Hero />
             <Configurator />
             <Features />
+            <Comparison />
             <CodeShowcase />
             <Pricing />
             <Reviews />

@@ -215,6 +215,33 @@ export const Icons = {
       <path d="M7 4.5l13 7.5-13 7.5v-15z" />
     </svg>
   ),
+  scan: ({ className = base }: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" />
+      <path d="M7 12h10" />
+      <circle cx="12" cy="12" r="4" opacity="0.45" />
+    </svg>
+  ),
+  google: ({ className = base }: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M12 12h8.5" />
+      <path d="M20.5 12a8.5 8.5 0 11-2.5-6" />
+      <path d="M12 7.5A4.5 4.5 0 1016.5 12" opacity="0.5" />
+    </svg>
+  ),
+  sync: ({ className = base }: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M17 3l4 4-4 4" />
+      <path d="M21 7H8a5 5 0 00-5 5v1" />
+      <path d="M7 21l-4-4 4-4" />
+      <path d="M3 17h13a5 5 0 005-5v-1" />
+    </svg>
+  ),
+  x: ({ className = base }: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  ),
 };
 
 export function Stars({ count = 5, size = "w-4 h-4" }: { count?: number; size?: string }) {

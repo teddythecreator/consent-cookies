@@ -66,7 +66,7 @@ export default function Hero() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-teal" />
               </span>
-              v1.0.0 · GPLv2 · listo para wordpress.org
+              v1.1.0 · GPLv2 · Consent Mode v2 + TCF v2.2
             </p>
           </Reveal>
 
@@ -78,9 +78,9 @@ export default function Hero() {
 
           <Reveal delay={190}>
             <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-mist">
-              Consentia añade a WordPress un banner de cookies que <strong className="font-semibold text-snow">bloquea de verdad</strong> los
-              scripts de analítica y marketing hasta que el visitante decide. Ligero, accesible y personalizable desde el admin, con vista
-              previa en vivo.
+              Banner con <strong className="font-semibold text-snow">bloqueo real</strong>, escáner de cookies, registro de consentimiento,
+              Google <strong className="font-semibold text-snow">Consent Mode v2</strong>, <strong className="font-semibold text-snow">IAB TCF v2.2</strong>,
+              CCPA y geolocalización. Todo autoalojado: sin SaaS, sin cuentas, sin pagar por visita.
             </p>
           </Reveal>
 
@@ -107,9 +107,9 @@ export default function Hero() {
             <dl className="mt-9 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
               {[
                 { value: "12 KB", label: "min + gzip" },
-                { value: "0", label: "jQuery" },
-                { value: "3", label: "categorías de cookies" },
-                { value: "GPL", label: "2.0 o posterior" },
+                { value: "0", label: "SaaS / jQuery" },
+                { value: "5", label: "categorías de cookies" },
+                { value: "2.2", label: "IAB TCF + CM v2" },
               ].map((s) => (
                 <div key={s.label} className="border-l-2 border-line pl-3 transition-colors duration-300 hover:border-azure">
                   <dt className="sr-only">{s.label}</dt>
@@ -134,9 +134,9 @@ export default function Hero() {
               </span>
             </div>
             <div className="absolute -bottom-5 -right-3 hidden animate-float items-center gap-2 rounded-lg border border-line bg-ink-2/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur [animation-delay:1.4s] sm:flex">
-              <Icons.a11y className="h-4 w-4 text-teal" />
+              <Icons.scan className="h-4 w-4 text-teal" />
               <span className="font-mono text-[11px] text-snow">
-                role="dialog" · foco · <span className="text-teal">Esc</span>
+                escáner + registro <span className="text-teal">incluidos gratis</span>
               </span>
             </div>
           </div>

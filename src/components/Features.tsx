@@ -6,14 +6,14 @@ function Cell({
   icon,
   title,
   children,
-  pro = false,
+  tag,
   delay = 0,
 }: {
   span: string;
   icon: ReactNode;
   title: string;
   children: ReactNode;
-  pro?: boolean;
+  tag?: string;
   delay?: number;
 }) {
   return (
@@ -25,9 +25,9 @@ function Cell({
         <span className="grid h-10 w-10 place-items-center rounded-lg bg-deep/12 text-azure ring-1 ring-deep/30 transition-all duration-300 group-hover:bg-deep group-hover:text-white">
           {icon}
         </span>
-        {pro && (
-          <span className="rounded-full bg-amber/12 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-amber ring-1 ring-amber/35">
-            Pro
+        {tag && (
+          <span className="rounded-full bg-teal/12 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-teal ring-1 ring-teal/35">
+            {tag}
           </span>
         )}
       </div>
@@ -52,6 +52,13 @@ const COMPATIBLE = [
   "WPForms",
 ];
 
+const MINI_ROWS = [
+  { c: "_ga_4X2K…", p: "Google Analytics", cat: "Analíticas" },
+  { c: "_fbp", p: "Meta Pixel", cat: "Publicidad" },
+  { c: "pll_language", p: "Polylang", cat: "Funcionales" },
+  { c: "wp_woocommerce_session", p: "WooCommerce", cat: "Necesarias" },
+];
+
 export default function Features() {
   return (
     <section id="caracteristicas" className="relative scroll-mt-24 py-24">
@@ -60,39 +67,99 @@ export default function Features() {
           eyebrow="Qué incluye"
           title={
             <>
-              Todo lo que pide tu abogado. <span className="text-teal">Nada</span> que retrase tu web.
+              Todo lo que cobra CookieYes. <span className="text-teal">Gratis</span> y en tu servidor.
             </>
           }
-          sub="Un plugin de consentimiento se juzga por dos cosas: que cumpla de verdad y que no se note. Consentia aspira a ambas."
+          sub="Banner, escáner de cookies, registro de consentimiento, Consent Mode v2, TCF v2.2, CCPA y geolocalización. Sin cuentas, sin SDK externos, sin límite de visitas."
         />
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
           <Cell span="lg:col-span-7" icon={<Icons.shield />} title="Bloqueo real de scripts" delay={0}>
             <p>
               Los scripts marcados con <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[12px] text-azure">data-consentia</code>{" "}
-              no se ejecutan hasta que hay consentimiento — y se activan al instante, sin recargar la página. GA4 se inyecta solo si pones
-              tu ID en los ajustes.
+              no se ejecutan hasta que hay consentimiento — y se activan al instante, sin recargar. GA4 se inyecta solo con tu ID.
             </p>
             <pre className="mt-4 overflow-x-auto rounded-lg border border-line-soft bg-[#070f1d] p-4 font-mono text-[12px] leading-relaxed">
               <code>
-                <span className="text-faint">&lt;!-- no corre hasta que el visitante acepte --&gt;</span>
-                {"\n"}
                 <span className="text-coral">&lt;script</span> <span className="text-amber">type</span>=
                 <span className="text-teal">"text/plain"</span> <span className="text-amber">data-consentia</span>=
-                <span className="text-teal">"analytics"</span> <span className="text-amber">src</span>=
-                <span className="text-teal">"…/stats.js"</span>
+                <span className="text-teal">"analytics"</span>
+                {"\n        "}
+                <span className="text-amber">src</span>=<span className="text-teal">"…/stats.js"</span>
                 <span className="text-coral">&gt;&lt;/script&gt;</span>
               </code>
             </pre>
           </Cell>
 
-          <Cell span="lg:col-span-5" icon={<Icons.bolt />} title="12 KB y cero jQuery" delay={90}>
-            <p>Vanilla JS diferido, una hoja de estilos con variables CSS y ni una petición externa. Tu Core Web Vitals no se entera.</p>
-            <div className="mt-5 space-y-3">
+          <Cell span="lg:col-span-5" icon={<Icons.scan />} title="Escáner de cookies" tag="Nuevo" delay={90}>
+            <p>
+              Audita cookies del servidor, del navegador y scripts de terceros conocidos (GA4, Meta, Hotjar, Clarity, TikTok,
+              DoubleClick…). Reclasifica y guarda el resultado para tu política de cookies.
+            </p>
+            <div className="mt-4 overflow-hidden rounded-lg border border-line-soft">
+              {MINI_ROWS.map((r, i) => (
+                <div
+                  key={r.c}
+                  className={`flex items-center justify-between gap-2 px-3 py-2 font-mono text-[11px] transition-colors hover:bg-ink-3/60 ${
+                    i % 2 ? "bg-ink/60" : "bg-ink-2/60"
+                  }`}
+                >
+                  <code className="truncate text-snow">{r.c}</code>
+                  <span className="shrink-0 text-faint">{r.p}</span>
+                  <span className="shrink-0 rounded bg-deep/15 px-1.5 py-0.5 text-[9.5px] font-bold text-azure">{r.cat}</span>
+                </div>
+              ))}
+            </div>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.ledger />} title="Registro de consentimiento" tag="Nuevo" delay={0}>
+            <p>Cada decisión en tu propia tabla con UUID, fecha, categorías, origen (banner, GPC, sync) y país. Exportación CSV y retención automática.</p>
+            <div className="mt-4 flex items-end gap-1.5" aria-hidden="true">
+              {[28, 45, 34, 58, 40, 66, 52].map((h, i) => (
+                <div key={i} className="flex w-full flex-col-reverse gap-0.5">
+                  <span className="rounded-sm bg-teal/80 transition-all duration-500" style={{ height: `${h * 0.6}px` }} />
+                  <span className="rounded-sm bg-coral/70" style={{ height: `${(100 - h) * 0.22}px` }} />
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-faint">aceptadas / rechazadas · 30 días</p>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.google />} title="Google Consent Mode v2" tag="Nuevo" delay={90}>
+            <p>
+              Envía <code className="font-mono text-[12px] text-azure">ad_storage</code>,{" "}
+              <code className="font-mono text-[12px] text-azure">analytics_storage</code>,{" "}
+              <code className="font-mono text-[12px] text-azure">ad_user_data</code> y{" "}
+              <code className="font-mono text-[12px] text-azure">ad_personalization</code>. Modo básico y avanzado.
+            </p>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.code />} title="IAB TCF v2.2" tag="Nuevo" delay={180}>
+            <p>
+              Registra <code className="font-mono text-[12px] text-azure">__tcfapi</code> y genera una TC string válida
+              (policy v2.2) a partir de las decisiones del visitante. Mapping de propósitos por categoría.
+            </p>
+            <pre className="mt-3 overflow-x-auto rounded-lg border border-line-soft bg-[#070f1d] p-3 font-mono text-[10.5px] text-mist">
+              <code>
+                __tcfapi(<span className="text-teal">'getTCData'</span>, 2, cb){"\n"}
+                <span className="text-faint">→ TC string: CQxf…AABA</span>
+              </code>
+            </pre>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.geo />} title="Geolocalización inteligente" tag="Nuevo" delay={0}>
+            <p>
+              Banner solo para la UE/EEA/UK: cabecera Cloudflare, MaxMind GeoIP2 o extensión geoip. Visitante desconocido =
+              reglas europeas, el valor seguro. Para California, modo CCPA con «Do Not Sell or Share».
+            </p>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.bolt />} title="12 KB y cero jQuery" delay={90}>
+            <p>Vanilla JS diferido, CSS con variables y ni una petición a terceros. Tu LCP no se entera.</p>
+            <div className="mt-4 space-y-3">
               {[
                 { label: "Consentia", size: "12 KB", pct: 14, color: "bg-teal" },
-                { label: "Gestor típico", size: "48 KB", pct: 55, color: "bg-amber" },
-                { label: "Plataforma CMP", size: "85 KB+", pct: 100, color: "bg-coral" },
+                { label: "CMP típica (SaaS)", size: "85 KB+", pct: 100, color: "bg-coral" },
               ].map((row) => (
                 <div key={row.label}>
                   <div className="mb-1 flex justify-between font-mono text-[10.5px] text-faint">
@@ -107,8 +174,15 @@ export default function Features() {
             </div>
           </Cell>
 
-          <Cell span="lg:col-span-4" icon={<Icons.palette />} title="Personalización total" delay={0}>
-            <p>Tarjeta o barra, 4 posiciones, colores, radio, textos y retraso. Con vista previa en vivo en el propio admin de WordPress.</p>
+          <Cell span="lg:col-span-4" icon={<Icons.sync />} title="Sincronización entre dominios" tag="Nuevo" delay={180}>
+            <p>
+              Una decisión se propaga a tus dominios hermanos por <code className="font-mono text-[12px] text-azure">postMessage</code>:
+              el visitante consiente una sola vez en todo tu ecosistema.
+            </p>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.palette />} title="Tres formatos y personalización total" delay={0}>
+            <p>Tarjeta, barra o píldora flotante; 4 posiciones, colores, radio, animación, retraso, textos y CSS propio. Con vista previa en vivo en el admin.</p>
             <div className="mt-4 flex gap-2">
               {["#2f6fed", "#35d0a5", "#ffb224", "#ff6b6b", "#111827"].map((c) => (
                 <span
@@ -121,39 +195,33 @@ export default function Features() {
             </div>
           </Cell>
 
-          <Cell span="lg:col-span-4" icon={<Icons.a11y />} title="Accesible por defecto" delay={90}>
+          <Cell span="lg:col-span-4" icon={<Icons.a11y />} title="Accesible + GPC" delay={90}>
             <p>
               <code className="font-mono text-[12.5px] text-azure">role="dialog"</code>, gestión de foco, cierre con{" "}
-              <kbd className="rounded border border-line bg-ink px-1.5 py-0.5 font-mono text-[10.5px]">Esc</kbd>, contraste AA y respeto a{" "}
-              <code className="font-mono text-[12.5px] text-azure">prefers-reduced-motion</code>.
+              <kbd className="rounded border border-line bg-ink px-1.5 py-0.5 font-mono text-[10.5px]">Esc</kbd>, contraste AA,
+              reduced-motion y respeto automático a <strong className="text-snow">Global Privacy Control</strong>.
             </p>
           </Cell>
 
-          <Cell span="lg:col-span-4" icon={<Icons.wordpress />} title="Multisitio e i18n" delay={180}>
-            <p>
-              Funciona en redes multisitio, es compatible con WPML y Polylang y trae traducción española incluida. Text domain{" "}
-              <code className="font-mono text-[12.5px] text-azure">consentia</code>.
-            </p>
-          </Cell>
-
-          <Cell span="lg:col-span-4" icon={<Icons.ledger />} title="Registro de consentimiento" pro delay={0}>
-            <p>Cada decisión queda anotada con fecha, categorías y versión del texto: tu prueba de cumplimiento exportable en CSV.</p>
-          </Cell>
-
-          <Cell span="lg:col-span-4" icon={<Icons.geo />} title="Geolocalización UE/UK" pro delay={90}>
-            <p>Muestra el banner solo a visitantes del Espacio Económico Europeo y Reino Unido. El resto navega sin fricción.</p>
-          </Cell>
-
-          <Cell span="lg:col-span-4" icon={<Icons.code />} title="Shortcodes y API JS" delay={180}>
-            <p>Reabre las preferencias desde el pie de página y reacciona a la decisión con eventos del DOM.</p>
-            <pre className="mt-4 overflow-x-auto rounded-lg border border-line-soft bg-[#070f1d] p-3.5 font-mono text-[11.5px] leading-relaxed">
+          <Cell span="lg:col-span-4" icon={<Icons.code />} title="Shortcodes, API y eventos" delay={180}>
+            <p>Reabre preferencias desde el pie y reacciona a cada decisión.</p>
+            <pre className="mt-3 overflow-x-auto rounded-lg border border-line-soft bg-[#070f1d] p-3.5 font-mono text-[11.5px] leading-relaxed">
               <code>
                 <span className="text-coral">[consentia_manage]</span>
                 {"\n"}
                 <span className="text-azure">Consentia</span>.<span className="text-teal">open</span>() ·{" "}
                 <span className="text-azure">Consentia</span>.<span className="text-teal">status</span>()
+                {"\n"}
+                <span className="text-teal">'consentia:granted'</span> · <span className="text-teal">'consentia:updated'</span>
               </code>
             </pre>
+          </Cell>
+
+          <Cell span="lg:col-span-4" icon={<Icons.wordpress />} title="Multisitio e i18n" delay={0}>
+            <p>
+              Funciona en redes multisitio, compatible con WPML y Polylang, traducción española incluida. Text domain{" "}
+              <code className="font-mono text-[12.5px] text-azure">consentia</code>.
+            </p>
           </Cell>
         </div>
 

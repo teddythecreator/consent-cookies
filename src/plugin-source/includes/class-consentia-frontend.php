@@ -1,9 +1,9 @@
 <?php
 /**
- * Frontend output for Consentia.
+ * Frontend output for Consentia (v1.1).
  *
- * Enqueues the banner assets, passes the sanitized settings to the
- * script, renders the root container and registers shortcodes.
+ * Applies geolocation rules, enqueues banner + TCF assets, exposes the
+ * full configuration to the front script and registers shortcodes.
  *
  * @package Consentia
  */
@@ -45,7 +45,7 @@ class Consentia_Frontend {
 	}
 
 	/**
-	 * Enqueue banner assets and localize settings.
+	 * Enqueue banner assets and localize configuration.
 	 *
 	 * @return void
 	 */
@@ -56,43 +56,117 @@ class Consentia_Frontend {
 			return;
 		}
 
+		$geo = Consentia_Geo::instance();
+		if ( ! $geo->requires_banner() ) {
+			return; // Visitor outside the GDPR scope: no banner, no TCF.
+		}
+
 		wp_enqueue_style( 'consentia', CONSENTIA_URL . 'assets/css/consentia.css', array(), CONSENTIA_VERSION );
 		wp_enqueue_script( 'consentia', CONSENTIA_URL . 'assets/js/consentia.js', array(), CONSENTIA_VERSION, true );
 		wp_script_add_data( 'consentia', 'defer', true );
+
+		if ( ! empty( $settings['tcf_enabled'] ) ) {
+			wp_enqueue_script( 'consentia-tcf', CONSENTIA_URL . 'assets/js/consentia-tcf.js', array( 'consentia' ), CONSENTIA_VERSION, true );
+			wp_script_add_data( 'consentia-tcf', 'defer', true );
+		}
 
 		wp_localize_script(
 			'consentia',
 			'consentiaData',
 			array(
-				'settings'   => $settings,
-				'categories' => $this->categories(),
+				'settings'        => $settings,
+				'categories'      => $this->categories( $settings ),
+				'consent_version' => $this->consent_version( $settings ),
+				'log_url'         => ! empty( $settings['log_enabled'] ) ? rest_url( 'consentia/v1/log' ) : '',
+				'sync_domains'    => $this->sync_domains( $settings ),
+				'geo_country'     => $geo->visitor_country(),
+				'ccpa_scope'      => ! empty( $settings['ccpa_enabled'] ) && $geo->is_us_visitor(),
+				'gpc'             => ! empty( $settings['gpc_respect'] ),
 			)
 		);
+
+		if ( '' !== trim( (string) $settings['custom_css'] ) ) {
+			wp_add_inline_style( 'consentia', $settings['custom_css'] );
+		}
 	}
 
 	/**
-	 * Cookie categories exposed to the front script.
+	 * Hash of banner texts + plugin version, used to re-ask consent
+	 * when the wording changes (renew_on_update).
 	 *
+	 * @param array $settings Sanitized settings.
+	 * @return string
+	 */
+	private function consent_version( $settings ) {
+		$material = CONSENTIA_VERSION . '|' . $settings['title'] . '|' . $settings['message'] . '|' . implode( ',', array_keys( $this->categories( $settings ) ) );
+		return substr( md5( $material ), 0, 10 );
+	}
+
+	/**
+	 * Visible categories, necessary always first.
+	 *
+	 * @param array $settings Sanitized settings.
 	 * @return array<string, array<string, mixed>>
 	 */
-	private function categories() {
-		return array(
+	private function categories( $settings ) {
+		$cats = array(
 			'necessary' => array(
 				'label'       => __( 'Necesarias', 'consentia' ),
 				'description' => __( 'Imprescindibles para que la web funcione: sesión, seguridad y carrito. No se pueden desactivar.', 'consentia' ),
 				'locked'      => true,
 			),
-			'analytics' => array(
+		);
+
+		if ( ! empty( $settings['cat_functional'] ) ) {
+			$cats['functional'] = array(
+				'label'       => __( 'Funcionales', 'consentia' ),
+				'description' => __( 'Recuerdan tus preferencias: idioma, región, chat o reproductor personalizado.', 'consentia' ),
+				'locked'      => false,
+			);
+		}
+
+		if ( ! empty( $settings['cat_analytics'] ) ) {
+			$cats['analytics'] = array(
 				'label'       => __( 'Analíticas', 'consentia' ),
 				'description' => __( 'Nos ayudan a entender cómo se usa la web con datos agregados y anónimos.', 'consentia' ),
 				'locked'      => false,
-			),
-			'marketing' => array(
-				'label'       => __( 'Marketing', 'consentia' ),
+			);
+		}
+
+		if ( ! empty( $settings['cat_performance'] ) ) {
+			$cats['performance'] = array(
+				'label'       => __( 'Rendimiento', 'consentia' ),
+				'description' => __( 'Miden tiempos de carga y errores para optimizar la velocidad del sitio.', 'consentia' ),
+				'locked'      => false,
+			);
+		}
+
+		if ( ! empty( $settings['cat_advertising'] ) ) {
+			$cats['advertising'] = array(
+				'label'       => __( 'Publicidad', 'consentia' ),
 				'description' => __( 'Permiten mostrar anuncios relevantes y limitar las veces que los ves.', 'consentia' ),
 				'locked'      => false,
-			),
-		);
+			);
+		}
+
+		return $cats;
+	}
+
+	/**
+	 * Parsed list of sibling domains for consent sync.
+	 *
+	 * @param array $settings Sanitized settings.
+	 * @return string[]
+	 */
+	private function sync_domains( $settings ) {
+		$domains = array();
+		foreach ( preg_split( '/\r\n|\r|\n/', (string) $settings['sync_domains'] ) as $line ) {
+			$url = esc_url_raw( trim( $line ) );
+			if ( '' !== $url ) {
+				$domains[] = untrailingslashit( $url );
+			}
+		}
+		return array_values( array_unique( $domains ) );
 	}
 
 	/**
@@ -104,6 +178,10 @@ class Consentia_Frontend {
 		$settings = Consentia_Settings::get();
 
 		if ( empty( $settings['enabled'] ) ) {
+			return;
+		}
+
+		if ( ! Consentia_Geo::instance()->requires_banner() ) {
 			return;
 		}
 

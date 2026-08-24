@@ -5,6 +5,7 @@ const LINKS = [
   { href: "#demo", label: "Demo" },
   { href: "#configurador", label: "Configurador" },
   { href: "#caracteristicas", label: "Características" },
+  { href: "#comparativa", label: "vs CookieYes" },
   { href: "#codigo", label: "Código" },
   { href: "#precios", label: "Precios" },
   { href: "#faq", label: "FAQ" },
