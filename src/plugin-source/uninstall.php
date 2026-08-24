@@ -1,0 +1,25 @@
+<?php
+/**
+ * Consentia uninstall routine.
+ *
+ * Removes every option the plugin created, on single sites and
+ * across every site of a multisite network.
+ *
+ * @package Consentia
+ */
+
+// If uninstall was not called from WordPress, exit.
+defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
+
+if ( is_multisite() ) {
+	$site_ids = get_sites( array( 'fields' => 'ids' ) );
+	foreach ( $site_ids as $site_id ) {
+		switch_to_blog( $site_id );
+		delete_option( 'consentia_settings' );
+		delete_option( 'consentia_first_run' );
+		restore_current_blog();
+	}
+} else {
+	delete_option( 'consentia_settings' );
+	delete_option( 'consentia_first_run' );
+}

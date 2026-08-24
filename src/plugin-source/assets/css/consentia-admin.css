@@ -1,0 +1,171 @@
+/**
+ * Consentia — settings page styles (live preview pane + layout).
+ *
+ * @package Consentia
+ */
+
+.consentia-admin-version {
+	font-size: 12px;
+	font-weight: 500;
+	background: #2271b1;
+	color: #fff;
+	border-radius: 999px;
+	padding: 2px 10px;
+	vertical-align: middle;
+	margin-left: 6px;
+}
+
+.consentia-admin-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 340px;
+	gap: 28px;
+	margin-top: 16px;
+	align-items: start;
+}
+
+@media (max-width: 960px) {
+	.consentia-admin-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.consentia-admin-fields .form-table th {
+	width: 220px;
+}
+
+.consentia-color {
+	width: 64px;
+	height: 34px;
+	padding: 2px;
+	border: 1px solid #8c8f94;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.consentia-admin-preview {
+	position: sticky;
+	top: 40px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 10px;
+	padding: 16px;
+}
+
+.consentia-admin-preview-label {
+	margin: 0 0 10px;
+	font-weight: 600;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #646970;
+}
+
+/* Miniature site */
+
+.consentia-admin-mini {
+	position: relative;
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 14px;
+	min-height: 240px;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	gap: 8px;
+	overflow: hidden;
+}
+
+.consentia-admin-mini-site {
+	position: absolute;
+	inset: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.consentia-admin-mini-bar {
+	height: 12px;
+	width: 55%;
+	background: #c3c4c7;
+	border-radius: 4px;
+}
+
+.consentia-admin-mini-line {
+	height: 8px;
+	background: #dcdcde;
+	border-radius: 4px;
+}
+
+.consentia-admin-mini-line.w100 { width: 100%; }
+.consentia-admin-mini-line.w85  { width: 85%; }
+.consentia-admin-mini-line.w70  { width: 70%; }
+.consentia-admin-mini-line.w60  { width: 60%; }
+
+.consentia-admin-mini-banner {
+	position: relative;
+	z-index: 2;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border-radius: var(--consentia-radius);
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 250px;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.consentia-admin-mini-banner.is-bar {
+	max-width: none;
+	border-radius: 0;
+}
+
+.consentia-admin-mini-banner.is-top {
+	order: -1;
+}
+
+.consentia-admin-mini-banner strong {
+	font-size: 12px;
+}
+
+.consentia-admin-mini-banner small {
+	font-size: 10.5px;
+	line-height: 1.4;
+	opacity: 0.8;
+}
+
+.consentia-admin-mini-actions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.consentia-admin-mini-actions em {
+	font-style: normal;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: 6px;
+}
+
+.consentia-admin-mini-actions .a {
+	background: var(--consentia-accent);
+	color: #fff;
+}
+
+.consentia-admin-mini-actions .r {
+	border: 1px solid currentColor;
+	opacity: 0.75;
+}
+
+.consentia-admin-mini-actions .p {
+	text-decoration: underline;
+	opacity: 0.75;
+}
+
+.consentia-admin-disabled {
+	margin: 10px 0 0;
+	color: #b32d2e;
+	font-size: 12px;
+}
