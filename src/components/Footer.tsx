@@ -160,7 +160,20 @@ export default function Footer() {
               </a>
             ))}
           </nav>
-          <p className="font-mono text-[11.5px] text-faint">© 2026 Consentia · GPLv2+</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-mono text-[11.5px] text-faint">
+            <span>© 2026 Consentia · GPLv2+</span>
+            <a
+              href="https://thecreator.business/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-line bg-card/70 px-3 py-1 text-mist transition-all duration-200 hover:border-azure/60 hover:text-snow hover:shadow-[0_0_18px_rgba(76,154,255,0.25)]"
+              title="Visitar Thecreator.business"
+            >
+              <span className="text-faint transition-colors group-hover:text-azure">By</span>
+              <span className="font-semibold text-snow">Thecreator.business</span>
+              <Icons.arrow className="h-3 w-3 -rotate-45 text-azure transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </a>
+          </p>
         </div>
       </div>
     </footer>
