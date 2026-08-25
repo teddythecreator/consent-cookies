@@ -461,13 +461,16 @@ class Consentia_Settings {
 		foreach ( $panes as $key => $section ) {
 			printf( '<div class="consentia-admin-pane" data-pane="%s" %s>', esc_attr( $key ), 'general' === $key ? '' : 'hidden' );
 			do_settings_sections( $section );
+
+			// The proof log (totals, table, CSV export) lives inside the
+			// same "Registro" tab as its settings.
+			if ( 'log' === $key ) {
+				echo '<hr />';
+				include CONSENTIA_PATH . 'admin/views/consents-list.php';
+			}
+
 			echo '</div>';
 		}
-
-		// Registro pane: proof log view (totals, table, CSV export).
-		echo '<div class="consentia-admin-pane" data-pane="log" hidden>';
-		include CONSENTIA_PATH . 'admin/views/consents-list.php';
-		echo '</div>';
 
 		submit_button( __( 'Guardar cambios', 'consentia' ) );
 		echo '</form>';

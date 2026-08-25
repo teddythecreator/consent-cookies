@@ -111,12 +111,18 @@
 	max-width: 440px;
 	opacity: 0;
 	transform: translateY(16px);
-	transition: opacity 0.3s ease, transform 0.3s ease;
+	/* Invisible states must never capture clicks or keyboard focus. */
+	pointer-events: none;
+	visibility: hidden;
+	transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
 }
 
 .consentia-banner--visible {
 	opacity: 1;
 	transform: none;
+	pointer-events: auto;
+	visibility: visible;
+	transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .consentia-banner--hidden {
@@ -397,6 +403,13 @@
 		right: 12px !important;
 		bottom: 12px;
 		max-width: none;
+		transform: none;
+	}
+
+	/* On mobile the banner spans the whole width, so the desktop
+	   translateX(-50%) centering would push it half off-screen. */
+	.consentia-banner--bottom-center,
+	.consentia-banner--bottom-center.consentia-banner--visible {
 		transform: none;
 	}
 

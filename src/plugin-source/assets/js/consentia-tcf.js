@@ -6,10 +6,9 @@
  * state. Purpose mapping:
  *
  *   necessary   → purpose 1 (legitimate interest, always on)
- *   functional  → purposes 3, 5, 6
- *   analytics   → purposes 7, 8, 9, 10
- *   performance → purposes 7, 8, 9, 10
- *   advertising → purposes 2, 3, 4
+ *   preferences → purposes 3, 5, 6
+ *   statistics  → purposes 7, 8, 9, 10
+ *   marketing   → purposes 2, 3, 4
  *
  * @package Consentia
  */

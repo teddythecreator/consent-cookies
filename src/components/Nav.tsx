@@ -26,7 +26,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         <span className="font-display text-[19px] font-bold tracking-tight text-snow">
           Consentia
           <span className="ml-2 rounded bg-ink-3 px-1.5 py-0.5 font-mono text-[10px] font-medium text-azure ring-1 ring-line">
-            v1.0.0
+            v1.2.1
           </span>
         </span>
       )}

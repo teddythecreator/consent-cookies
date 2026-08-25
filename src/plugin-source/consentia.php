@@ -3,9 +3,9 @@
  * Plugin Name:       Consentia – Cookie Consent & GDPR
  * Plugin URI:        https://consentia.dev/
  * Description:       Gestión de consentimiento RGPD, LSSI-CE y ePrivacy: banner con tres botones de igual visibilidad, bloqueo previo de scripts (type="text/consentia"), registro probatorio en tu base de datos, widget de revocación, política de cookies con [consentia_policy], geolocalización UE/California y accesibilidad WCAG 2.1 AA. Autoalojado, ~12 KB, sin jQuery.
- * Version:           1.2.0
- * Requires at least: 6.0
- * Requires PHP:      7.4
+ * Version:           1.2.1
+ * Requires at least: 5.9
+ * Requires PHP:      7.0
  * Author:            Consentia Team
  * Author URI:        https://thecreator.business/
  * License:           GPL-2.0-or-later
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CONSENTIA_VERSION', '1.2.0' );
+define( 'CONSENTIA_VERSION', '1.2.1' );
 define( 'CONSENTIA_FILE', __FILE__ );
 define( 'CONSENTIA_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CONSENTIA_URL', plugin_dir_url( __FILE__ ) );
@@ -64,6 +64,11 @@ final class Consentia {
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'admin_notices', array( $this, 'first_run_notice' ) );
 
+		// Self-healing: some hosts run activation hooks with restricted
+		// DB privileges and dbDelta can fail silently; recreate the proof
+		// table the first time an admin screen loads.
+		add_action( 'admin_init', array( $this, 'ensure_table' ) );
+
 		// AJAX: proof of consent (GDPR art. 7.1 — the controller must be
 		// able to demonstrate that the subject gave consent).
 		add_action( 'wp_ajax_consentia_save_consent', array( $this, 'ajax_save_consent' ) );
@@ -108,6 +113,30 @@ final class Consentia {
 	 */
 	public function deactivate() {
 		wp_clear_scheduled_hook( 'consentia_daily_cleanup' );
+	}
+
+	/**
+	 * Guarantees the proof-of-consent table exists (runs once).
+	 *
+	 * @return void
+	 */
+	public function ensure_table() {
+		if ( get_option( 'consentia_table_ok' ) ) {
+			return;
+		}
+
+		global $wpdb;
+
+		// Cheap existence check before touching dbDelta.
+		$exists = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', Consentia_Logger::table() )
+		);
+
+		if ( empty( $exists ) ) {
+			Consentia_Logger::maybe_create_table();
+		}
+
+		update_option( 'consentia_table_ok', 1 );
 	}
 
 	/**

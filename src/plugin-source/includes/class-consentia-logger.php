@@ -37,6 +37,8 @@ class Consentia_Logger {
 		$table   = self::table();
 		$charset = $wpdb->get_charset_collate();
 
+		// CURRENT_TIMESTAMP keeps the table creatable on MySQL with strict
+		// sql_mode (NO_ZERO_DATE), which some managed hosts enforce.
 		$sql = "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			consent_type varchar(20) NOT NULL DEFAULT 'granted',
@@ -45,7 +47,7 @@ class Consentia_Logger {
 			user_agent text NULL,
 			page_url text NULL,
 			plugin_version varchar(20) NOT NULL,
-			consented_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+			consented_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
 			KEY consented_at (consented_at),
 			KEY consent_type (consent_type)

@@ -1,10 +1,10 @@
 === Consentia – Cookie Consent & GDPR (RGPD / LSSI-CE) ===
 Contributors: consentia
 Tags: gdpr, rgpd, cookies, cookie consent, cookie law, ccpa, eprivacy, lssi, privacy, banner
-Requires at least: 6.0
+Requires at least: 5.9
 Tested up to: 6.7
-Requires PHP: 7.4
-Stable tag: 1.2.0
+Requires PHP: 7.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -37,7 +37,7 @@ Consentia convierte el cumplimiento de cookies en algo que puedes demostrar, no 
 * Geolocalización UE/EEE/Reino Unido + California (Cloudflare, MaxMind, geoip o ipapi.co), fail-closed.
 * Google Consent Mode v2 e IAB TCF v2.2 opcionales.
 * Inyección de GA4 solo si se aceptan las Estadísticas.
-* Escáner de cookies y scripts de terceros.
+* CSS adicional para el banner, textos editables y 3 formatos (tarjeta, barra y píldora).
 * ~12 KB, cero jQuery, sin peticiones externas obligatorias.
 * Multisitio, WPML/Polylang y traducción española incluida. Text domain `consentia`.
 
@@ -86,6 +86,13 @@ Sí. El banner se renderiza en PHP y la configuración viaja por `wp_localize_sc
 
 == Changelog ==
 
+= 1.2.1 =
+* Corrección: la tabla de registro ya no usa fechas por defecto incompatibles con MySQL estricto (algunos hostings no creaban la tabla).
+* Corrección: el banner oculto ya no intercepta clics ni es anunciado por lectores de pantalla cuando ya existe una decisión.
+* Corrección: «Aceptar todas» solo concede las categorías que el sitio tiene activadas.
+* Corrección: el formato «centrado abajo» ya no se desplaza fuera de la pantalla en móvil.
+* Compatibilidad ampliada: PHP 7.0+ y WordPress 5.9+.
+
 = 1.2.0 =
 * Cumplimiento estricto RGPD / LSSI-CE / ePrivacy.
 * Banner renderizado en PHP con tres botones de idéntica visibilidad (role="alertdialog").
@@ -103,6 +110,9 @@ Sí. El banner se renderiza en PHP y la configuración viaja por `wp_localize_sc
 * Versión inicial.
 
 == Upgrade Notice ==
+
+= 1.2.1 =
+Correcciones de compatibilidad: si la instalación fallaba en tu hosting (MySQL estricto o PHP antiguo), esta versión lo soluciona.
 
 = 1.2.0 =
 Actualización mayor orientada al cumplimiento legal estricto. Revisa Ajustes → Consentia tras actualizar.

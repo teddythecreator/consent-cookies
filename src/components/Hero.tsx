@@ -66,7 +66,7 @@ export default function Hero() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-teal" />
               </span>
-              v1.1.0 · GPLv2 · Consent Mode v2 + TCF v2.2
+              v1.2.1 · GPLv2 · RGPD + LSSI-CE + ePrivacy
             </p>
           </Reveal>
 

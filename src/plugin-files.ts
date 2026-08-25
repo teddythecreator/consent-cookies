@@ -22,7 +22,7 @@ export interface PluginFile {
   note: string;
 }
 
-export const PLUGIN_VERSION = "1.2.0";
+export const PLUGIN_VERSION = "1.2.1";
 export const PLUGIN_SLUG = "consentia";
 
 export const PLUGIN_FILES: PluginFile[] = [
@@ -35,7 +35,7 @@ export const PLUGIN_FILES: PluginFile[] = [
   { path: "includes/class-consentia-geo.php", content: geoPhp, lang: "php", note: "UE/EEE/UK + California, fail-closed" },
   { path: "assets/js/consentia.js", content: bannerJs, lang: "js", note: "grantConsent, cookies 365d, bloqueo, widget, WCAG" },
   { path: "assets/js/consentia-tcf.js", content: tcfJs, lang: "js", note: "IAB TCF v2.2 (TC string + __tcfapi)" },
-  { path: "assets/js/consentia-admin.js", content: adminJs, lang: "js", note: "Vista previa en vivo y escáner del admin" },
+  { path: "assets/js/consentia-admin.js", content: adminJs, lang: "js", note: "Pestañas y vista previa en vivo del admin" },
   { path: "assets/css/consentia.css", content: bannerCss, lang: "css", note: "Botones de igual visibilidad, foco 3px, sr-only" },
   { path: "assets/css/consentia-admin.css", content: adminCss, lang: "css", note: "Estilos de la página de ajustes" },
   { path: "templates/cookie-policy.php", content: policyTpl, lang: "php", note: "Política de cookies detallada ([consentia_policy])" },

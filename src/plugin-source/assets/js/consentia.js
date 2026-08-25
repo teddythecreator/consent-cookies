@@ -274,7 +274,24 @@
 	function hideBanner() {
 		if (!banner) return;
 		banner.classList.add('consentia-banner--hidden');
+		banner.classList.remove('consentia-banner--visible');
 		banner.setAttribute('aria-hidden', 'true');
+	}
+
+	/**
+	 * Builds the "accept everything" map from the categories the site
+	 * actually has enabled (Settings → Categories), so accepting never
+	 * grants a category the owner turned off.
+	 *
+	 * @returns {Object}
+	 */
+	function allEnabledCategories() {
+		var out = { necessary: true };
+		var cats = data.categories || {};
+		Object.keys(cats).forEach(function (key) {
+			if (key !== 'necessary') out[key] = true;
+		});
+		return out;
 	}
 
 	function showBanner() {
@@ -430,7 +447,7 @@
 		// Explicit consent ONLY: these three handlers are the sole entry
 		// points. No scroll, mousemove or navigation listeners exist.
 		if (accept) accept.addEventListener('click', function () {
-			grantConsent({ necessary: true, preferences: true, statistics: true, marketing: true }, 'granted');
+			grantConsent(allEnabledCategories(), 'granted');
 		});
 		if (reject) reject.addEventListener('click', rejectConsent);
 		if (prefs) prefs.addEventListener('click', openSettings);
@@ -466,6 +483,13 @@
 			}
 			showBanner();
 			return;
+		}
+
+		// A decision already exists: the banner must disappear completely
+		// (display:none), not just fade — an invisible alertdialog would
+		// still trap clicks and be announced by screen readers.
+		if (getCookie(COOKIE_CONSENT)) {
+			hideBanner();
 		}
 
 		checkConsentExpiry();

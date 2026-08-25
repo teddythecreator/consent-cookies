@@ -4,9 +4,9 @@ import { PLUGIN_FILES, PLUGIN_VERSION } from "../plugin-files";
 
 const FACTS = [
   { k: "Stable tag", v: PLUGIN_VERSION },
-  { k: "Requires at least", v: "WordPress 6.0" },
+  { k: "Requires at least", v: "WordPress 5.9" },
   { k: "Tested up to", v: "6.7" },
-  { k: "Requires PHP", v: "7.4" },
+  { k: "Requires PHP", v: "7.0" },
   { k: "License", v: "GPLv2 or later" },
   { k: "Text Domain", v: "consentia" },
 ];
