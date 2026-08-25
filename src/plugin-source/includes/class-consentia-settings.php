@@ -1,10 +1,10 @@
 <?php
 /**
- * Settings for Consentia (v1.1).
+ * Settings for Consentia (v1.2).
  *
- * Tabbed admin screen — General, Categorías, Cumplimiento (Consent Mode,
- * TCF, CCPA, GPC), Geolocalización, Registro, Escáner y Herramientas —
- * with a live banner preview and strict whitelist sanitization.
+ * Tabbed admin screen — Banner, Categorías, Cumplimiento, Geolocalización,
+ * Registro (proof log + CSV), Escáner y Herramientas — with a live banner
+ * preview and strict whitelist sanitization.
  *
  * @package Consentia
  */
@@ -46,6 +46,7 @@ class Consentia_Settings {
 		}
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'admin_init', array( $this, 'register' ) );
+		add_action( 'admin_post_consentia_purge_log', array( $this, 'purge_log' ) );
 	}
 
 	/**
@@ -59,7 +60,7 @@ class Consentia_Settings {
 	}
 
 	/**
-	 * First-run defaults (also used on activation).
+	 * Defaults, also used on activation.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -69,26 +70,23 @@ class Consentia_Settings {
 			'enabled'        => true,
 			'banner_type'    => 'card', // card | bar | floating
 			'position'       => 'bottom-left',
-			'animation'      => 'slide', // slide | fade | none
 			'bg_color'       => '#111827',
 			'text_color'     => '#f3f4f6',
 			'accent_color'   => '#2f6fed',
 			'corner_radius'  => 14,
 			'show_delay_ms'  => 600,
 			'title'          => __( 'Tu privacidad nos importa', 'consentia' ),
-			'message'        => __( 'Utilizamos cookies propias y de terceros para mejorar tu experiencia, medir la audiencia y mostrar anuncios relevantes. Puedes aceptarlas, rechazarlas o configurarlas por categoría.', 'consentia' ),
+			'message'        => __( 'Utilizamos cookies propias y de terceros para que la web funcione, recordar tus preferencias, medir la audiencia y mostrar anuncios relevantes. Puedes aceptarlas, rechazarlas o configurarlas por categoría. Más información en nuestra política de cookies.', 'consentia' ),
 			'accept_label'   => __( 'Aceptar todas', 'consentia' ),
 			'reject_label'   => __( 'Rechazar', 'consentia' ),
 			'prefs_label'    => __( 'Configurar', 'consentia' ),
 			'privacy_url'    => '',
 			'cookies_url'    => '',
-			'revisit_button' => true,
 			'custom_css'     => '',
-			// Categories (necessary is always on).
-			'cat_functional'  => true,
-			'cat_analytics'   => true,
-			'cat_performance' => true,
-			'cat_advertising' => true,
+			// Categories (necessary is always on and locked).
+			'cat_preferences' => true,
+			'cat_statistics'  => true,
+			'cat_marketing'   => true,
 			// Compliance.
 			'consent_mode'          => false, // Google Consent Mode v2
 			'consent_mode_advanced' => false,
@@ -100,19 +98,17 @@ class Consentia_Settings {
 			'gpc_respect'           => true,  // Global Privacy Control
 			// Geolocation.
 			'geo_enabled'          => false,
-			'geo_source'           => 'auto', // auto | cloudflare | maxmind
+			'geo_source'           => 'auto', // auto | cloudflare | maxmind | ipapi
 			'geo_maxmind_path'     => '',
 			'geo_countries'        => '',
 			'geo_country_override' => '',
-			// Log.
+			// Proof log.
 			'log_enabled'        => true,
 			'log_retention_days' => 365,
 			'log_ip'             => false,
-			// Renewal.
+			// Renewal (CNIL/AEPD recommend 6 months; hard cap 365 days).
 			'renew_months'    => 6,
 			'renew_on_update' => true,
-			// Cross-domain sync.
-			'sync_domains' => '',
 			// Analytics.
 			'ga_id' => '',
 		);
@@ -157,14 +153,14 @@ class Consentia_Settings {
 		add_settings_section( 'consentia_categories', __( 'Categorías de cookies', 'consentia' ), null, 'consentia_categories' );
 		add_settings_section( 'consentia_compliance', __( 'Cumplimiento', 'consentia' ), null, 'consentia_compliance' );
 		add_settings_section( 'consentia_geo', __( 'Geolocalización', 'consentia' ), null, 'consentia_geo' );
-		add_settings_section( 'consentia_log', __( 'Registro', 'consentia' ), null, 'consentia_log' );
+		add_settings_section( 'consentia_log', __( 'Registro y caducidad', 'consentia' ), null, 'consentia_log' );
 		add_settings_section( 'consentia_tools', __( 'Herramientas', 'consentia' ), null, 'consentia_tools' );
 
 		$add = function ( $id, $title, $section, $args = array() ) {
 			add_settings_field( $id, $title, array( $this, 'field' ), $section, $section, array_merge( array( 'id' => $id ), $args ) );
 		};
 
-		// General.
+		// Banner.
 		$add( 'enabled', __( 'Activar banner', 'consentia' ), 'consentia_general', array( 'type' => 'checkbox' ) );
 		$add( 'banner_type', __( 'Formato', 'consentia' ), 'consentia_general', array(
 			'type' => 'select',
@@ -183,69 +179,59 @@ class Consentia_Settings {
 				'top' => __( 'Barra superior', 'consentia' ),
 			),
 		) );
-		$add( 'animation', __( 'Animación', 'consentia' ), 'consentia_general', array(
-			'type' => 'select',
-			'options' => array(
-				'slide' => __( 'Deslizamiento', 'consentia' ),
-				'fade' => __( 'Fundido', 'consentia' ),
-				'none' => __( 'Ninguna', 'consentia' ),
-			),
-		) );
 		$add( 'title', __( 'Título', 'consentia' ), 'consentia_general', array( 'type' => 'text' ) );
 		$add( 'message', __( 'Mensaje', 'consentia' ), 'consentia_general', array( 'type' => 'textarea' ) );
-		$add( 'accept_label', __( 'Texto «Aceptar»', 'consentia' ), 'consentia_general', array( 'type' => 'text' ) );
+		$add( 'accept_label', __( 'Texto «Aceptar»', 'consentia' ), 'consentia_general', array( 'type' => 'text', 'help' => __( 'Los tres botones se muestran siempre al mismo nivel e idéntica visibilidad (directriz EDPB 05/2020).', 'consentia' ) ) );
 		$add( 'reject_label', __( 'Texto «Rechazar»', 'consentia' ), 'consentia_general', array( 'type' => 'text' ) );
 		$add( 'prefs_label', __( 'Texto «Configurar»', 'consentia' ), 'consentia_general', array( 'type' => 'text' ) );
 		$add( 'privacy_url', __( 'URL política de privacidad', 'consentia' ), 'consentia_general', array( 'type' => 'url' ) );
-		$add( 'cookies_url', __( 'URL política de cookies', 'consentia' ), 'consentia_general', array( 'type' => 'url' ) );
+		$add( 'cookies_url', __( 'URL política de cookies', 'consentia' ), 'consentia_general', array( 'type' => 'url', 'help' => __( 'Puedes generarla con el shortcode [consentia_policy] en una página.', 'consentia' ) ) );
 		$add( 'show_delay_ms', __( 'Retraso de aparición (ms)', 'consentia' ), 'consentia_general', array( 'type' => 'number', 'min' => 0, 'max' => 5000, 'step' => 50 ) );
 		$add( 'bg_color', __( 'Color de fondo', 'consentia' ), 'consentia_general', array( 'type' => 'color' ) );
 		$add( 'text_color', __( 'Color de texto', 'consentia' ), 'consentia_general', array( 'type' => 'color' ) );
-		$add( 'accent_color', __( 'Color de acento', 'consentia' ), 'consentia_general', array( 'type' => 'color' ) );
+		$add( 'accent_color', __( 'Color de acento (enlaces)', 'consentia' ), 'consentia_general', array( 'type' => 'color' ) );
 		$add( 'corner_radius', __( 'Radio de esquina (px)', 'consentia' ), 'consentia_general', array( 'type' => 'number', 'min' => 0, 'max' => 40 ) );
-		$add( 'revisit_button', __( 'Botón flotante «Configurar cookies»', 'consentia' ), 'consentia_general', array( 'type' => 'checkbox', 'help' => __( 'Permite reabrir las preferencias desde cualquier página, como exige la CNIL.', 'consentia' ) ) );
 
-		// Categories.
-		$add( 'cat_functional', __( 'Categoría «Funcionales»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox', 'help' => __( 'Preferencias de idioma, chats, reproductores…', 'consentia' ) ) );
-		$add( 'cat_analytics', __( 'Categoría «Analíticas»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox' ) );
-		$add( 'cat_performance', __( 'Categoría «Rendimiento»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox', 'help' => __( 'Métricas de velocidad y optimización.', 'consentia' ) ) );
-		$add( 'cat_advertising', __( 'Categoría «Publicidad»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox' ) );
-		$add( 'ga_id', __( 'ID de Google Analytics 4', 'consentia' ), 'consentia_categories', array( 'type' => 'text', 'placeholder' => 'G-XXXXXXX', 'help' => __( 'Solo se inyecta gtag.js si se aceptan las analíticas.', 'consentia' ) ) );
+		// Categories (4 legal categories; necessary is locked by design).
+		$add( 'cat_preferences', __( 'Categoría «Preferencias»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox', 'help' => __( 'Idioma, región, personalización. Aparece desmarcada por defecto, como exige el RGPD.', 'consentia' ) ) );
+		$add( 'cat_statistics', __( 'Categoría «Estadísticas»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox' ) );
+		$add( 'cat_marketing', __( 'Categoría «Marketing»', 'consentia' ), 'consentia_categories', array( 'type' => 'checkbox' ) );
+		$add( 'ga_id', __( 'ID de Google Analytics 4', 'consentia' ), 'consentia_categories', array( 'type' => 'text', 'placeholder' => 'G-XXXXXXX', 'help' => __( 'Solo se inyecta gtag.js si se aceptan las Estadísticas.', 'consentia' ) ) );
 
 		// Compliance.
 		$add( 'consent_mode', __( 'Google Consent Mode v2', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Envía señales ad_storage, analytics_storage, ad_user_data y ad_personalization a Google.', 'consentia' ) ) );
-		$add( 'consent_mode_advanced', __( 'Modo avanzado (inyección de tags)', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Deshabilítalo si usas GTM server-side o el modo básico.', 'consentia' ) ) );
-		$add( 'tcf_enabled', __( 'IAB TCF v2.2', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Registra la API __tcfapi y genera la TC string con el consentimiento.', 'consentia' ) ) );
-		$add( 'tcf_cmp_id', __( 'ID de CMP (registro IAB)', 'consentia' ), 'consentia_compliance', array( 'type' => 'number', 'min' => 0, 'max' => 4095, 'help' => __( '0 si aún no tienes ID propio.', 'consentia' ) ) );
+		$add( 'consent_mode_advanced', __( 'Modo avanzado (inyección de tags)', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox' ) );
+		$add( 'tcf_enabled', __( 'IAB TCF v2.2', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Registra __tcfapi y genera la TC string con el consentimiento.', 'consentia' ) ) );
+		$add( 'tcf_cmp_id', __( 'ID de CMP (registro IAB)', 'consentia' ), 'consentia_compliance', array( 'type' => 'number', 'min' => 0, 'max' => 4095 ) );
 		$add( 'tcf_publisher_cc', __( 'Código de país del editor', 'consentia' ), 'consentia_compliance', array( 'type' => 'text', 'placeholder' => 'ES' ) );
-		$add( 'ccpa_enabled', __( 'CCPA / CPRA (California)', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Añade el enlace «Do Not Sell or Share» y el modo de opt-out.', 'consentia' ) ) );
+		$add( 'ccpa_enabled', __( 'CCPA / CPRA (California)', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Añade el enlace «Do Not Sell or Share» para visitantes de California.', 'consentia' ) ) );
 		$add( 'ccpa_do_not_sell', __( 'Texto «Do Not Sell»', 'consentia' ), 'consentia_compliance', array( 'type' => 'text' ) );
 		$add( 'gpc_respect', __( 'Respetar Global Privacy Control', 'consentia' ), 'consentia_compliance', array( 'type' => 'checkbox', 'help' => __( 'Si el navegador envía GPC, se registra un rechazo sin mostrar banner.', 'consentia' ) ) );
 
 		// Geo.
-		$add( 'geo_enabled', __( 'Aplicar reglas por geolocalización', 'consentia' ), 'consentia_geo', array( 'type' => 'checkbox', 'help' => __( 'El banner solo se muestra a visitantes de la UE/EEA/UK (y los países extra que indiques). País desconocido = reglas UE.', 'consentia' ) ) );
+		$add( 'geo_enabled', __( 'Aplicar reglas por geolocalización', 'consentia' ), 'consentia_geo', array( 'type' => 'checkbox', 'help' => __( 'Banner solo para visitantes de la UE/EEE/Reino Unido (y California para CCPA). País desconocido = se pide consentimiento (fail-closed).', 'consentia' ) ) );
 		$add( 'geo_source', __( 'Fuente de detección', 'consentia' ), 'consentia_geo', array(
 			'type' => 'select',
 			'options' => array(
-				'auto' => __( 'Automática (Cloudflare → MaxMind → geoip)', 'consentia' ),
+				'auto' => __( 'Automática (Cloudflare → MaxMind → geoip → ipapi.co)', 'consentia' ),
 				'cloudflare' => __( 'Solo cabecera Cloudflare', 'consentia' ),
 				'maxmind' => __( 'Solo MaxMind GeoIP2 (.mmdb)', 'consentia' ),
+				'ipapi' => __( 'Solo ipapi.co (requiere internet)', 'consentia' ),
 			),
 		) );
-		$add( 'geo_maxmind_path', __( 'Ruta al archivo .mmdb', 'consentia' ), 'consentia_geo', array( 'type' => 'text', 'placeholder' => '/ruta/a/GeoLite2-Country.mmdb', 'help' => __( 'Requiere el paquete geoip2/geoip2 vía Composer.', 'consentia' ) ) );
+		$add( 'geo_maxmind_path', __( 'Ruta al archivo .mmdb', 'consentia' ), 'consentia_geo', array( 'type' => 'text', 'placeholder' => '/ruta/a/GeoLite2-Country.mmdb' ) );
 		$add( 'geo_countries', __( 'Países extra (ISO separados por coma)', 'consentia' ), 'consentia_geo', array( 'type' => 'text', 'placeholder' => 'CH, US' ) );
-		$add( 'geo_country_override', __( 'Simular país (pruebas)', 'consentia' ), 'consentia_geo', array( 'type' => 'text', 'placeholder' => 'ES', 'help' => __( 'Fuerza un país para probar el comportamiento. Vacío = detección real.', 'consentia' ) ) );
+		$add( 'geo_country_override', __( 'Simular país (pruebas)', 'consentia' ), 'consentia_geo', array( 'type' => 'text', 'placeholder' => 'ES' ) );
 
-		// Log.
-		$add( 'log_enabled', __( 'Registrar consentimientos', 'consentia' ), 'consentia_log', array( 'type' => 'checkbox', 'help' => __( 'Cada decisión queda en la tabla ' . Consentia_Logger::table() . ' con identificador UUID. Sin datos personales salvo que actives el hash de IP.', 'consentia' ) ) );
+		// Log + renewal.
+		$add( 'log_enabled', __( 'Registrar consentimientos en la base de datos', 'consentia' ), 'consentia_log', array( 'type' => 'checkbox', 'help' => __( 'Tabla ' . Consentia_Logger::table() . ': prueba exigida por el art. 7.1 RGPD.', 'consentia' ) ) );
 		$add( 'log_retention_days', __( 'Retención (días)', 'consentia' ), 'consentia_log', array( 'type' => 'number', 'min' => 1, 'max' => 3650 ) );
-		$add( 'log_ip', __( 'Guardar IP anonimizada (hash)', 'consentia' ), 'consentia_log', array( 'type' => 'checkbox' ) );
-		$add( 'renew_months', __( 'Renovar consentimiento (meses)', 'consentia' ), 'consentia_log', array( 'type' => 'number', 'min' => 1, 'max' => 24 ) );
+		$add( 'log_ip', __( 'Guardar IP anonimizada (hash)', 'consentia' ), 'consentia_log', array( 'type' => 'checkbox', 'help' => __( 'Con soporte de proxies y Cloudflare; se almacena como hash irreversible.', 'consentia' ) ) );
+		$add( 'renew_months', __( 'Volver a pedir el consentimiento (meses)', 'consentia' ), 'consentia_log', array( 'type' => 'number', 'min' => 1, 'max' => 12, 'help' => __( 'Máximo legal: 365 días. Recomendado CNIL/AEPD: 6 meses.', 'consentia' ) ) );
 		$add( 'renew_on_update', __( 'Renovar al cambiar el texto del banner', 'consentia' ), 'consentia_log', array( 'type' => 'checkbox' ) );
 
 		// Tools.
-		$add( 'sync_domains', __( 'Dominios para sincronizar consentimiento', 'consentia' ), 'consentia_tools', array( 'type' => 'textarea', 'placeholder' => "https://midominio.com\nhttps://otro.dominio.es", 'help' => __( 'Un dominio por línea. El consentimiento se propaga por postMessage (iframe oculto).', 'consentia' ) ) );
-		$add( 'custom_css', __( 'CSS adicional del banner', 'consentia' ), 'consentia_tools', array( 'type' => 'textarea', 'help' => __( 'Se imprime dentro de &lt;style&gt; junto al banner.', 'consentia' ) ) );
+		$add( 'custom_css', __( 'CSS adicional del banner', 'consentia' ), 'consentia_tools', array( 'type' => 'textarea', 'help' => __( 'Se imprime junto al banner. Los botones mantienen el mismo tamaño por ley; ajusta solo colores/espacios adicionales.', 'consentia' ) ) );
 	}
 
 	/**
@@ -350,11 +336,10 @@ class Consentia_Settings {
 
 		$d = self::defaults();
 
-		$out = array(
+		return array(
 			'enabled'               => ! empty( $input['enabled'] ),
 			'banner_type'           => $oneof( isset( $input['banner_type'] ) ? $input['banner_type'] : '', array( 'card', 'bar', 'floating' ), 'card' ),
 			'position'              => $oneof( isset( $input['position'] ) ? $input['position'] : '', array( 'bottom-left', 'bottom-right', 'bottom-center', 'top' ), 'bottom-left' ),
-			'animation'             => $oneof( isset( $input['animation'] ) ? $input['animation'] : '', array( 'slide', 'fade', 'none' ), 'slide' ),
 			'bg_color'              => $hex( isset( $input['bg_color'] ) ? $input['bg_color'] : '', $d['bg_color'] ),
 			'text_color'            => $hex( isset( $input['text_color'] ) ? $input['text_color'] : '', $d['text_color'] ),
 			'accent_color'          => $hex( isset( $input['accent_color'] ) ? $input['accent_color'] : '', $d['accent_color'] ),
@@ -367,13 +352,11 @@ class Consentia_Settings {
 			'prefs_label'           => isset( $input['prefs_label'] ) ? sanitize_text_field( $input['prefs_label'] ) : $d['prefs_label'],
 			'privacy_url'           => isset( $input['privacy_url'] ) ? esc_url_raw( $input['privacy_url'] ) : '',
 			'cookies_url'           => isset( $input['cookies_url'] ) ? esc_url_raw( $input['cookies_url'] ) : '',
-			'revisit_button'        => ! empty( $input['revisit_button'] ),
 			'custom_css'            => isset( $input['custom_css'] ) ? wp_strip_all_tags( $input['custom_css'] ) : '',
 
-			'cat_functional'        => ! empty( $input['cat_functional'] ),
-			'cat_analytics'         => ! empty( $input['cat_analytics'] ),
-			'cat_performance'       => ! empty( $input['cat_performance'] ),
-			'cat_advertising'       => ! empty( $input['cat_advertising'] ),
+			'cat_preferences'       => ! empty( $input['cat_preferences'] ),
+			'cat_statistics'        => ! empty( $input['cat_statistics'] ),
+			'cat_marketing'         => ! empty( $input['cat_marketing'] ),
 
 			'consent_mode'          => ! empty( $input['consent_mode'] ),
 			'consent_mode_advanced' => ! empty( $input['consent_mode_advanced'] ),
@@ -385,7 +368,7 @@ class Consentia_Settings {
 			'gpc_respect'           => ! empty( $input['gpc_respect'] ),
 
 			'geo_enabled'           => ! empty( $input['geo_enabled'] ),
-			'geo_source'            => $oneof( isset( $input['geo_source'] ) ? $input['geo_source'] : '', array( 'auto', 'cloudflare', 'maxmind' ), 'auto' ),
+			'geo_source'            => $oneof( isset( $input['geo_source'] ) ? $input['geo_source'] : '', array( 'auto', 'cloudflare', 'maxmind', 'ipapi' ), 'auto' ),
 			'geo_maxmind_path'      => isset( $input['geo_maxmind_path'] ) ? sanitize_text_field( $input['geo_maxmind_path'] ) : '',
 			'geo_countries'         => isset( $input['geo_countries'] ) ? strtoupper( sanitize_text_field( $input['geo_countries'] ) ) : '',
 			'geo_country_override'  => isset( $input['geo_country_override'] ) ? strtoupper( sanitize_text_field( $input['geo_country_override'] ) ) : '',
@@ -393,14 +376,28 @@ class Consentia_Settings {
 			'log_enabled'           => ! empty( $input['log_enabled'] ),
 			'log_retention_days'    => $int( isset( $input['log_retention_days'] ) ? $input['log_retention_days'] : 365, 1, 3650, 365 ),
 			'log_ip'                => ! empty( $input['log_ip'] ),
-			'renew_months'          => $int( isset( $input['renew_months'] ) ? $input['renew_months'] : 6, 1, 24, 6 ),
+			'renew_months'          => $int( isset( $input['renew_months'] ) ? $input['renew_months'] : 6, 1, 12, 6 ),
 			'renew_on_update'       => ! empty( $input['renew_on_update'] ),
 
-			'sync_domains'          => isset( $input['sync_domains'] ) ? sanitize_textarea_field( $input['sync_domains'] ) : '',
 			'ga_id'                 => isset( $input['ga_id'] ) ? sanitize_text_field( $input['ga_id'] ) : '',
 		);
+	}
 
-		return $out;
+	/**
+	 * Purges the whole proof log (capability + nonce guarded).
+	 *
+	 * @return void
+	 */
+	public function purge_log() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No tienes permisos.', 'consentia' ) );
+		}
+		check_admin_referer( 'consentia_purge' );
+
+		Consentia_Logger::purge_all();
+
+		wp_safe_redirect( admin_url( 'options-general.php?page=consentia' ) );
+		exit;
 	}
 
 	/**
@@ -418,19 +415,10 @@ class Consentia_Settings {
 			'consentia-admin',
 			'consentiaAdmin',
 			array(
-				'settings'    => $s,
-				'nonce'       => wp_create_nonce( 'consentia_admin' ),
-				'ajaxurl'     => admin_url( 'admin-ajax.php' ),
-				'export_url'  => wp_nonce_url( admin_url( 'admin-post.php?action=consentia_export_csv' ), 'consentia_export' ),
-				'purge_text'  => __( '¿Borrar TODO el registro? Esta acción no se puede deshacer.', 'consentia' ),
-				'saved_text'  => __( 'Guardado.', 'consentia' ),
-				'categories'  => array(
-					'necessary'   => __( 'Necesarias', 'consentia' ),
-					'functional'  => __( 'Funcionales', 'consentia' ),
-					'analytics'   => __( 'Analíticas', 'consentia' ),
-					'performance' => __( 'Rendimiento', 'consentia' ),
-					'advertising' => __( 'Publicidad', 'consentia' ),
-				),
+				'settings'   => $s,
+				'nonce'      => wp_create_nonce( 'consentia_admin' ),
+				'ajaxurl'    => admin_url( 'admin-ajax.php' ),
+				'saved_text' => __( 'Guardado.', 'consentia' ),
 			)
 		);
 
@@ -440,13 +428,12 @@ class Consentia_Settings {
 			'compliance' => __( 'Cumplimiento', 'consentia' ),
 			'geo'        => __( 'Geolocalización', 'consentia' ),
 			'log'        => __( 'Registro', 'consentia' ),
-			'scanner'    => __( 'Escáner', 'consentia' ),
 			'tools'      => __( 'Herramientas', 'consentia' ),
 		);
 
 		echo '<div class="wrap consentia-admin-wrap">';
 		echo '<h1>Consentia <span class="consentia-admin-version">' . esc_html( CONSENTIA_VERSION ) . '</span></h1>';
-		echo '<p class="description">' . esc_html__( 'Consentimiento de cookies autoalojado: banner, escáner, registro, Consent Mode v2, TCF v2.2 y CCPA.', 'consentia' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Cumplimiento RGPD, LSSI-CE y ePrivacy: consentimiento explícito, bloqueo previo, registro probatorio, revocación y política de cookies.', 'consentia' ) . '</p>';
 
 		echo '<nav class="consentia-admin-tabs" role="tablist" aria-label="' . esc_attr__( 'Secciones de Consentia', 'consentia' ) . '">';
 		foreach ( $tabs as $key => $label ) {
@@ -477,25 +464,9 @@ class Consentia_Settings {
 			echo '</div>';
 		}
 
-		// Registro pane: stats + latest + actions (rendered by JS).
+		// Registro pane: proof log view (totals, table, CSV export).
 		echo '<div class="consentia-admin-pane" data-pane="log" hidden>';
-		echo '<h2>' . esc_html__( 'Registro de consentimiento', 'consentia' ) . '</h2>';
-		echo '<p class="description">' . esc_html__( 'Prueba de cumplimiento: cada decisión con UUID, fecha, categorías y origen. Exportable en CSV y con retención automática.', 'consentia' ) . '</p>';
-		echo '<div class="consentia-log-actions"><a class="button button-primary" id="consentia-export" href="' . esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=consentia_export_csv' ), 'consentia_export' ) ) . '">' . esc_html__( 'Exportar CSV', 'consentia' ) . '</a> <button type="button" class="button" id="consentia-purge">' . esc_html__( 'Vaciar registro', 'consentia' ) . '</button></div>';
-		echo '<div class="consentia-log-totals" id="consentia-log-totals"></div>';
-		echo '<h3>' . esc_html__( 'Últimos 30 días', 'consentia' ) . '</h3>';
-		echo '<div class="consentia-log-chart" id="consentia-log-chart"></div>';
-		echo '<h3>' . esc_html__( 'Últimas decisiones', 'consentia' ) . '</h3>';
-		echo '<table class="widefat striped consentia-log-table" id="consentia-log-table"><thead><tr><th>' . esc_html__( 'Fecha', 'consentia' ) . '</th><th>' . esc_html__( 'Decisión', 'consentia' ) . '</th><th>' . esc_html__( 'Consentimiento', 'consentia' ) . '</th><th>' . esc_html__( 'País', 'consentia' ) . '</th></tr></thead><tbody></tbody></table>';
-		echo '</div>';
-
-		// Scanner pane.
-		echo '<div class="consentia-admin-pane" data-pane="scanner" hidden>';
-		echo '<h2>' . esc_html__( 'Escáner de cookies', 'consentia' ) . '</h2>';
-		echo '<p class="description">' . esc_html__( 'Audita las cookies del servidor, las del navegador y los scripts de terceros conocidos. Clasifica cada elemento y guarda el resultado para tu política de cookies.', 'consentia' ) . '</p>';
-		echo '<p><button type="button" class="button button-primary" id="consentia-scan-run">' . esc_html__( 'Ejecutar escaneo', 'consentia' ) . '</button> <button type="button" class="button" id="consentia-scan-save">' . esc_html__( 'Guardar clasificación', 'consentia' ) . '</button></p>';
-		echo '<p class="description" id="consentia-scan-meta"></p>';
-		echo '<table class="widefat striped consentia-scan-table" id="consentia-scan-table"><thead><tr><th>' . esc_html__( 'Tipo', 'consentia' ) . '</th><th>' . esc_html__( 'Nombre / URL', 'consentia' ) . '</th><th>' . esc_html__( 'Proveedor', 'consentia' ) . '</th><th>' . esc_html__( 'Categoría', 'consentia' ) . '</th></tr></thead><tbody></tbody></table>';
+		include CONSENTIA_PATH . 'admin/views/consents-list.php';
 		echo '</div>';
 
 		submit_button( __( 'Guardar cambios', 'consentia' ) );
@@ -513,7 +484,7 @@ class Consentia_Settings {
 		echo '<small class="consentia-preview-ccpa" id="consentia-preview-ccpa" hidden></small>';
 		echo '</div>';
 		echo '</div>';
-		echo '<p class="description">' . esc_html__( 'Se actualiza mientras escribes, igual que en tu web.', 'consentia' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Los tres botones siempre se dibujan al mismo nivel: rechazar es tan fácil como aceptar.', 'consentia' ) . '</p>';
 		echo '</aside>';
 
 		echo '</div>'; // .wrap

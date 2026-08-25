@@ -52,11 +52,13 @@ const COMPATIBLE = [
   "WPForms",
 ];
 
-const MINI_ROWS = [
-  { c: "_ga_4X2K…", p: "Google Analytics", cat: "Analíticas" },
-  { c: "_fbp", p: "Meta Pixel", cat: "Publicidad" },
-  { c: "pll_language", p: "Polylang", cat: "Funcionales" },
-  { c: "wp_woocommerce_session", p: "WooCommerce", cat: "Necesarias" },
+const POLICY_SECTIONS = [
+  "Qué son las cookies",
+  "Categorías: necesarias, preferencias, estadísticas, marketing",
+  "Cookies concretas: consentia_consent, _ga, _fbp…",
+  "Transferencias internacionales (Google, Meta → EE. UU.)",
+  "Gestión por navegador: Chrome, Firefox, Safari, Edge",
+  "Derechos del usuario y reclamación ante la AEPD",
 ];
 
 export default function Features() {
@@ -70,20 +72,20 @@ export default function Features() {
               Todo lo que cobra CookieYes. <span className="text-teal">Gratis</span> y en tu servidor.
             </>
           }
-          sub="Banner, escáner de cookies, registro de consentimiento, Consent Mode v2, TCF v2.2, CCPA y geolocalización. Sin cuentas, sin SDK externos, sin límite de visitas."
+          sub="Banner, bloqueo previo, registro probatorio, política de cookies automática, Consent Mode v2, TCF v2.2, CCPA y geolocalización. Sin cuentas, sin SDK externos, sin límite de visitas."
         />
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
           <Cell span="lg:col-span-7" icon={<Icons.shield />} title="Bloqueo real de scripts" delay={0}>
             <p>
-              Los scripts marcados con <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[12px] text-azure">data-consentia</code>{" "}
+              Los scripts marcados con <code className="rounded bg-ink px-1.5 py-0.5 font-mono text-[12px] text-azure">type="text/consentia"</code>{" "}
               no se ejecutan hasta que hay consentimiento — y se activan al instante, sin recargar. GA4 se inyecta solo con tu ID.
             </p>
             <pre className="mt-4 overflow-x-auto rounded-lg border border-line-soft bg-[#070f1d] p-4 font-mono text-[12px] leading-relaxed">
               <code>
                 <span className="text-coral">&lt;script</span> <span className="text-amber">type</span>=
-                <span className="text-teal">"text/plain"</span> <span className="text-amber">data-consentia</span>=
-                <span className="text-teal">"analytics"</span>
+                <span className="text-teal">"text/consentia"</span> <span className="text-amber">data-consentia-category</span>=
+                <span className="text-teal">"statistics"</span>
                 {"\n        "}
                 <span className="text-amber">src</span>=<span className="text-teal">"…/stats.js"</span>
                 <span className="text-coral">&gt;&lt;/script&gt;</span>
@@ -91,22 +93,21 @@ export default function Features() {
             </pre>
           </Cell>
 
-          <Cell span="lg:col-span-5" icon={<Icons.scan />} title="Escáner de cookies" tag="Nuevo" delay={90}>
+          <Cell span="lg:col-span-5" icon={<Icons.doc />} title="Política de cookies automática" tag="Nuevo" delay={90}>
             <p>
-              Audita cookies del servidor, del navegador y scripts de terceros conocidos (GA4, Meta, Hotjar, Clarity, TikTok,
-              DoubleClick…). Reclasifica y guarda el resultado para tu política de cookies.
+              El shortcode <code className="font-mono text-[12px] text-azure">[consentia_policy]</code> genera una política completa:
+              categorías, cookies concretas, transferencias internacionales, gestión por navegador y derechos ante la AEPD.
             </p>
             <div className="mt-4 overflow-hidden rounded-lg border border-line-soft">
-              {MINI_ROWS.map((r, i) => (
+              {POLICY_SECTIONS.map((s, i) => (
                 <div
-                  key={r.c}
-                  className={`flex items-center justify-between gap-2 px-3 py-2 font-mono text-[11px] transition-colors hover:bg-ink-3/60 ${
+                  key={s}
+                  className={`flex items-center gap-2.5 px-3 py-2 font-mono text-[11px] transition-colors hover:bg-ink-3/60 ${
                     i % 2 ? "bg-ink/60" : "bg-ink-2/60"
                   }`}
                 >
-                  <code className="truncate text-snow">{r.c}</code>
-                  <span className="shrink-0 text-faint">{r.p}</span>
-                  <span className="shrink-0 rounded bg-deep/15 px-1.5 py-0.5 text-[9.5px] font-bold text-azure">{r.cat}</span>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-teal/70" />
+                  <span className="truncate text-mist">{s}</span>
                 </div>
               ))}
             </div>

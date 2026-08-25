@@ -1,10 +1,11 @@
 <?php
 /**
- * Consent log for Consentia.
+ * Consent proof log for Consentia.
  *
- * Stores every consent decision in a dedicated table, exposes a public
- * REST endpoint for the front script, and provides admin tools:
- * stats (last 30 days), CSV export, purge and retention cleanup.
+ * GDPR art. 7.1 requires the controller to demonstrate that the data
+ * subject consented. This class stores every decision (accept, reject,
+ * update, withdraw) in a dedicated table: IP (optionally hashed), user
+ * agent, timestamp, categories, plugin version and page URL.
  *
  * @package Consentia
  */
@@ -14,40 +15,21 @@ defined( 'ABSPATH' ) || exit;
 class Consentia_Logger {
 
 	/**
-	 * Singleton instance.
-	 *
-	 * @var Consentia_Logger|null
-	 */
-	private static $instance = null;
-
-	/**
-	 * Returns the singleton instance.
-	 *
-	 * @return Consentia_Logger
-	 */
-	public static function instance() {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	/**
-	 * Log table name (with prefix).
+	 * Returns the log table name (prefixed).
 	 *
 	 * @return string
 	 */
 	public static function table() {
 		global $wpdb;
-		return $wpdb->prefix . 'consentia_log';
+		return $wpdb->prefix . 'consentia_consents';
 	}
 
 	/**
-	 * Creates or upgrades the log table.
+	 * Creates the log table on activation (idempotent dbDelta).
 	 *
 	 * @return void
 	 */
-	public static function create_table() {
+	public static function maybe_create_table() {
 		global $wpdb;
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -56,341 +38,239 @@ class Consentia_Logger {
 		$charset = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table} (
-			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-			consent_id CHAR(36) NOT NULL,
-			consent_date DATETIME NOT NULL,
-			consent TEXT NOT NULL,
-			consent_source VARCHAR(32) NOT NULL DEFAULT 'banner',
-			consent_version VARCHAR(32) NOT NULL DEFAULT '',
-			country VARCHAR(2) NOT NULL DEFAULT '',
-			visitor_hash CHAR(64) NOT NULL DEFAULT '',
-			ip_hash CHAR(64) DEFAULT NULL,
-			user_agent VARCHAR(191) NOT NULL DEFAULT '',
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			consent_type varchar(20) NOT NULL DEFAULT 'granted',
+			categories longtext NOT NULL,
+			ip_address varchar(64) NOT NULL DEFAULT '',
+			user_agent text NULL,
+			page_url text NULL,
+			plugin_version varchar(20) NOT NULL,
+			consented_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 			PRIMARY KEY  (id),
-			KEY consent_date (consent_date),
-			KEY consent_source (consent_source),
-			KEY visitor_hash (visitor_hash)
+			KEY consented_at (consented_at),
+			KEY consent_type (consent_type)
 		) {$charset};";
 
 		dbDelta( $sql );
 	}
 
 	/**
-	 * Hooks.
+	 * Inserts one consent decision.
+	 *
+	 * The IP is hashed (one-way) when the site enables it, so the log is
+	 * evidence without becoming personal-data heavy.
+	 *
+	 * @param array  $categories Map category => bool.
+	 * @param string $type       granted | rejected | updated | revoked | gpc | reset.
+	 * @param string $url        Page where the decision happened.
+	 * @return int|false Inserted row ID.
 	 */
-	private function __construct() {
-		add_action( 'rest_api_init', array( $this, 'rest_routes' ) );
-		add_action( 'admin_post_consentia_export_csv', array( $this, 'export_csv' ) );
-		add_action( 'wp_ajax_consentia_log_stats', array( $this, 'ajax_stats' ) );
-		add_action( 'wp_ajax_consentia_log_purge', array( $this, 'ajax_purge' ) );
-		add_action( 'wp_ajax_consentia_log_latest', array( $this, 'ajax_latest' ) );
-		add_action( 'consentia_daily_cleanup', array( $this, 'cleanup' ) );
+	public static function log_consent( $categories, $type = 'granted', $url = '' ) {
+		global $wpdb;
 
-		if ( ! wp_next_scheduled( 'consentia_daily_cleanup' ) ) {
-			wp_schedule_event( time(), 'daily', 'consentia_daily_cleanup' );
+		$settings = Consentia_Settings::get();
+
+		$ip = '';
+		if ( ! empty( $settings['log_ip'] ) ) {
+			$ip = wp_hash( self::get_user_ip() . '|' . wp_salt() );
 		}
+
+		if ( '' === $url && ! empty( $_SERVER['REQUEST_URI'] ) ) {
+			$url = esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
+		}
+
+		$user_agent = ! empty( $_SERVER['HTTP_USER_AGENT'] )
+			? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) )
+			: '';
+
+		$result = $wpdb->insert(
+			self::table(),
+			array(
+				'consent_type'   => sanitize_key( $type ),
+				'categories'     => (string) wp_json_encode( $categories ),
+				'ip_address'     => $ip,
+				'user_agent'     => $user_agent,
+				'page_url'       => esc_url_raw( $url ),
+				'plugin_version' => CONSENTIA_VERSION,
+				'consented_at'   => current_time( 'mysql', true ),
+			),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+		);
+
+		return false === $result ? false : (int) $wpdb->insert_id;
 	}
 
 	/**
-	 * Public endpoint so the front script can record decisions.
+	 * Real visitor IP with proxy / Cloudflare / load-balancer support.
 	 *
-	 * @return void
+	 * Walks CF-Connecting-IP → X-Forwarded-For → X-Real-IP → REMOTE_ADDR
+	 * and ignores private/reserved ranges in forwarded lists.
+	 *
+	 * @return string
 	 */
-	public function rest_routes() {
-		register_rest_route(
-			'consentia/v1',
-			'/log',
-			array(
-				'methods'             => 'POST',
-				'permission_callback' => '__return_true',
-				'callback'            => array( $this, 'rest_log' ),
-				'args'                => array(
-					'consent'         => array( 'required' => true, 'type' => 'object' ),
-					'source'          => array( 'required' => false, 'type' => 'string' ),
-					'visitor_id'      => array( 'required' => false, 'type' => 'string' ),
-					'consent_version' => array( 'required' => false, 'type' => 'string' ),
-				),
+	public static function get_user_ip() {
+		$headers = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR' );
+
+		foreach ( $headers as $header ) {
+			if ( empty( $_SERVER[ $header ] ) ) {
+				continue;
+			}
+
+			$list  = explode( ',', wp_unslash( $_SERVER[ $header ] ) );
+			$candidate = trim( $list[0] );
+
+			if ( filter_var( $candidate, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+				return $candidate;
+			}
+		}
+
+		return ! empty( $_SERVER['REMOTE_ADDR'] ) ? wp_unslash( $_SERVER['REMOTE_ADDR'] ) : '';
+	}
+
+	/**
+	 * Latest decisions for the admin table.
+	 *
+	 * @param int $limit  Rows to fetch.
+	 * @param int $offset Pagination offset.
+	 * @return array<int, object>
+	 */
+	public static function get_consents( $limit = 100, $offset = 0 ) {
+		global $wpdb;
+
+		$limit  = max( 1, min( 500, (int) $limit ) );
+		$offset = max( 0, (int) $offset );
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT id, consent_type, categories, ip_address, page_url, plugin_version, consented_at
+				FROM " . self::table() . "
+				ORDER BY consented_at DESC
+				LIMIT %d OFFSET %d",
+				$limit,
+				$offset
 			)
 		);
 	}
 
 	/**
-	 * REST callback: persist one decision.
+	 * Totals for the last N days, by decision type.
 	 *
-	 * @param WP_REST_Request $request Incoming request.
-	 * @return WP_REST_Response
+	 * @param int $days Window in days.
+	 * @return array{granted:int,rejected:int,updated:int,revoked:int,total:int}
 	 */
-	public function rest_log( $request ) {
+	public static function count_recent( $days = 30 ) {
+		global $wpdb;
+
+		$since = gmdate( 'Y-m-d H:i:s', time() - ( absint( $days ) * DAY_IN_SECONDS ) );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT consent_type, COUNT(*) AS total
+				FROM " . self::table() . "
+				WHERE consented_at >= %s
+				GROUP BY consent_type",
+				$since
+			)
+		);
+
+		$out = array( 'granted' => 0, 'rejected' => 0, 'updated' => 0, 'revoked' => 0, 'total' => 0 );
+		foreach ( (array) $rows as $row ) {
+			if ( isset( $out[ $row->consent_type ] ) ) {
+				$out[ $row->consent_type ] = (int) $row->total;
+			}
+			$out['total'] += (int) $row->total;
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Daily scheduled purge beyond the configured retention (GDPR art. 5.1.e
+	 * storage limitation).
+	 *
+	 * @return void
+	 */
+	public static function scheduled_purge() {
 		$settings = Consentia_Settings::get();
 
 		if ( empty( $settings['log_enabled'] ) ) {
-			return rest_ensure_response( array( 'ok' => false, 'reason' => 'log_disabled' ) );
+			return;
 		}
 
-		$consent = $request->get_param( 'consent' );
-		$source  = sanitize_key( (string) $request->get_param( 'source' ) );
-		$vid     = sanitize_text_field( (string) $request->get_param( 'visitor_id' ) );
-		$version = sanitize_text_field( (string) $request->get_param( 'consent_version' ) );
-
-		if ( empty( $consent ) || ! is_array( $consent ) ) {
-			return rest_ensure_response( array( 'ok' => false, 'reason' => 'bad_consent' ) );
-		}
-
-		$allowed = array( 'accepted', 'rejected', 'custom', 'gpc', 'sync', 'renewed' );
-		if ( ! in_array( $source, $allowed, true ) ) {
-			$source = 'banner';
-		}
-
-		$geo     = Consentia_Geo::instance();
-		$country = $geo->visitor_country();
-
-		$this->log( $consent, $source, $country, $vid, $version );
-
-		return rest_ensure_response( array( 'ok' => true ) );
+		self::purge_older_than( (int) $settings['log_retention_days'] );
 	}
 
 	/**
-	 * Inserts one row in the log.
+	 * Deletes rows older than N days.
 	 *
-	 * @param array  $consent Category => bool map.
-	 * @param string $source  Where the decision came from.
-	 * @param string $country ISO country code, if known.
-	 * @param string $visitor_id Client-side random visitor id.
-	 * @param string $version Banner text/version hash.
-	 * @return int|false Insert id.
+	 * @param int $days Retention window.
+	 * @return int Deleted rows.
 	 */
-	public function log( $consent, $source = 'banner', $country = '', $visitor_id = '', $version = '' ) {
+	public static function purge_older_than( $days ) {
 		global $wpdb;
 
-		$settings = Consentia_Settings::get();
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( max( 1, (int) $days ) * DAY_IN_SECONDS ) );
 
-		$payload = array(
-			'necessary'   => true,
-			'functional'  => ! empty( $consent['functional'] ),
-			'analytics'   => ! empty( $consent['analytics'] ),
-			'performance' => ! empty( $consent['performance'] ),
-			'advertising' => ! empty( $consent['advertising'] ),
+		return (int) $wpdb->query(
+			$wpdb->prepare( "DELETE FROM " . self::table() . " WHERE consented_at < %s", $cutoff )
 		);
-
-		$data = array(
-			'consent_id'      => wp_generate_uuid4(),
-			'consent_date'    => current_time( 'mysql', true ),
-			'consent'         => wp_json_encode( $payload ),
-			'consent_source'  => $source,
-			'consent_version' => $version,
-			'country'         => strtoupper( substr( sanitize_text_field( $country ), 0, 2 ) ),
-			'visitor_hash'    => $visitor_id ? wp_hash( $visitor_id, 'nonce' ) : '',
-			'ip_hash'         => ! empty( $settings['log_ip'] ) ? wp_hash( $this->client_ip(), 'nonce' ) : null,
-			'user_agent'      => isset( $_SERVER['HTTP_USER_AGENT'] ) ? substr( sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ), 0, 191 ) : '',
-		);
-
-		$wpdb->insert( self::table(), $data ); // phpcs:ignore -- arrays above are sanitized.
-
-		return $wpdb->insert_id;
 	}
 
 	/**
-	 * Best-effort client IP, anonymized downstream via hashing.
+	 * Removes every row (admin action, double-confirmed in the UI).
 	 *
-	 * @return string
+	 * @return int Deleted rows.
 	 */
-	private function client_ip() {
-		$keys = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR' );
-		foreach ( $keys as $key ) {
-			if ( ! empty( $_SERVER[ $key ] ) ) {
-				$ip = explode( ',', sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) ) );
-				return trim( $ip[0] );
-			}
-		}
-		return '';
+	public static function purge_all() {
+		global $wpdb;
+		return (int) $wpdb->query( "TRUNCATE TABLE " . self::table() );
 	}
 
 	/**
-	 * Aggregated stats for the admin chart.
+	 * Streams the whole log as CSV download.
 	 *
-	 * @return array{totals: array<string,int>, daily: array<int, array{date: string, accepted: int, rejected: int, custom: int}>}
+	 * @return void
 	 */
-	public function stats() {
+	public static function export_csv() {
 		global $wpdb;
 
-		$table = self::table();
-
-		$totals = array( 'accepted' => 0, 'rejected' => 0, 'custom' => 0, 'gpc' => 0, 'sync' => 0 );
-		$rows   = $wpdb->get_results(
-			"SELECT consent_source, COUNT(*) AS total FROM {$table} GROUP BY consent_source",
+		$rows = $wpdb->get_results(
+			"SELECT consented_at, consent_type, categories, ip_address, user_agent, page_url, plugin_version
+			FROM " . self::table() . "
+			ORDER BY consented_at DESC",
 			ARRAY_A
 		);
 
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				if ( isset( $totals[ $row['consent_source'] ] ) ) {
-					$totals[ $row['consent_source'] ] = (int) $row['total'];
-				}
-			}
-		}
-
-		$daily_rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT DATE(consent_date) AS d, consent_source, COUNT(*) AS total
-				 FROM {$table}
-				 WHERE consent_date >= %s
-				 GROUP BY d, consent_source
-				 ORDER BY d ASC",
-				gmdate( 'Y-m-d H:i:s', strtotime( '-30 days' ) )
-			),
-			ARRAY_A
-		);
-
-		$daily = array();
-		if ( is_array( $daily_rows ) ) {
-			foreach ( $daily_rows as $row ) {
-				$date = $row['d'];
-				if ( ! isset( $daily[ $date ] ) ) {
-					$daily[ $date ] = array( 'date' => $date, 'accepted' => 0, 'rejected' => 0, 'custom' => 0 );
-				}
-				$source = $row['consent_source'];
-				if ( in_array( $source, array( 'accepted', 'rejected', 'custom' ), true ) ) {
-					$daily[ $date ][ $source ] = (int) $row['total'];
-				}
-			}
-		}
-
-		return array(
-			'totals' => $totals,
-			'daily'  => array_values( $daily ),
-		);
-	}
-
-	/**
-	 * AJAX: stats for the Registro tab.
-	 *
-	 * @return void
-	 */
-	public function ajax_stats() {
-		check_ajax_referer( 'consentia_admin', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
-		}
-
-		wp_send_json_success( $this->stats() );
-	}
-
-	/**
-	 * AJAX: latest entries preview.
-	 *
-	 * @return void
-	 */
-	public function ajax_latest() {
-		global $wpdb;
-
-		check_ajax_referer( 'consentia_admin', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
-		}
-
-		$table = self::table();
-		$rows  = $wpdb->get_results(
-			"SELECT consent_id, consent_date, consent, consent_source, country FROM {$table} ORDER BY id DESC LIMIT 10",
-			ARRAY_A
-		);
-
-		wp_send_json_success( array( 'rows' => is_array( $rows ) ? $rows : array() ) );
-	}
-
-	/**
-	 * AJAX: delete every entry.
-	 *
-	 * @return void
-	 */
-	public function ajax_purge() {
-		global $wpdb;
-
-		check_ajax_referer( 'consentia_admin', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
-		}
-
-		$wpdb->query( 'TRUNCATE TABLE ' . self::table() ); // phpcs:ignore -- table name is ours.
-
-		wp_send_json_success( array( 'message' => 'purged' ) );
-	}
-
-	/**
-	 * Streams the full log as CSV (admin-post, manage_options only).
-	 *
-	 * @return void
-	 */
-	public function export_csv() {
-		global $wpdb;
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'No tienes permisos para exportar el registro.', 'consentia' ) );
-		}
-
-		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'consentia_export' ) ) {
-			wp_die( esc_html__( 'Solicitud no válida.', 'consentia' ) );
-		}
-
-		$table = self::table();
-		$rows  = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id ASC", ARRAY_A ); // phpcs:ignore -- table name is ours.
-
+		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="consentia-log-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename=consentia-consents-' . gmdate( 'Y-m-d' ) . '.csv' );
 
 		$out = fopen( 'php://output', 'w' );
-		fputcsv( $out, array( 'id', 'consent_id', 'consent_date', 'necessary', 'functional', 'analytics', 'performance', 'advertising', 'consent_source', 'consent_version', 'country', 'visitor_hash', 'ip_hash', 'user_agent' ) );
+		fprintf( $out, chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) ); // UTF-8 BOM for Excel.
 
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				$consent = json_decode( (string) $row['consent'], true );
-				if ( ! is_array( $consent ) ) {
-					$consent = array();
-				}
-				fputcsv(
-					$out,
-					array(
-						$row['id'],
-						$row['consent_id'],
-						$row['consent_date'],
-						empty( $consent['necessary'] ) ? '0' : '1',
-						empty( $consent['functional'] ) ? '0' : '1',
-						empty( $consent['analytics'] ) ? '0' : '1',
-						empty( $consent['performance'] ) ? '0' : '1',
-						empty( $consent['advertising'] ) ? '0' : '1',
-						$row['consent_source'],
-						$row['consent_version'],
-						$row['country'],
-						$row['visitor_hash'],
-						$row['ip_hash'],
-						$row['user_agent'],
-					)
-				);
-			}
+		fputcsv(
+			$out,
+			array( 'Fecha (UTC)', 'Decisión', 'Categorías', 'IP (hash)', 'User Agent', 'URL', 'Versión plugin' ),
+			';'
+		);
+
+		foreach ( (array) $rows as $row ) {
+			fputcsv(
+				$out,
+				array(
+					$row['consented_at'],
+					$row['consent_type'],
+					$row['categories'],
+					$row['ip_address'],
+					$row['user_agent'],
+					$row['page_url'],
+					$row['plugin_version'],
+				),
+				';'
+			);
 		}
 
 		fclose( $out );
 		exit;
-	}
-
-	/**
-	 * Removes entries older than the retention window.
-	 *
-	 * @return void
-	 */
-	public function cleanup() {
-		global $wpdb;
-
-		$settings = Consentia_Settings::get();
-		$days     = max( 1, (int) $settings['log_retention_days'] );
-
-		$wpdb->query(
-			$wpdb->prepare(
-				'DELETE FROM ' . self::table() . ' WHERE consent_date < %s', // phpcs:ignore -- table name is ours.
-				gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) )
-			)
-		);
 	}
 }

@@ -3,7 +3,7 @@ import { DownloadButton, Icons, Reveal, SectionHeading, useToast } from "./share
 const FREE_FEATURES = [
   "Banner tarjeta, barra o píldora · 4 posiciones",
   "Bloqueo real por 5 categorías + panel granular",
-  "Escáner de cookies y scripts de terceros",
+  "Política de cookies automática ([consentia_policy])",
   "Registro de consentimiento con CSV y retención",
   "Google Consent Mode v2 (básico y avanzado)",
   "IAB TCF v2.2 con TC string",

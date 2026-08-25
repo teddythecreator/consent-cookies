@@ -71,7 +71,7 @@ export default function Footer() {
               <div id="aviso" className="scroll-mt-28 rounded-xl border border-amber/30 bg-ink-2/80 p-6">
                 <p className="font-display text-[16px] font-bold text-snow">Lista de espera de Pro</p>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-mist">
-                  Escaneos cloud semanales, GVL completa por vendor y white-label. Un correo el día del lanzamiento.
+                  GVL completa por vendor, white-label e informes multi-sitio para agencias. Un correo el día del lanzamiento.
                 </p>
                 {sent ? (
                   <p className="mt-4 flex items-center gap-2 rounded-lg bg-teal/10 px-4 py-3 text-[13.5px] font-semibold text-teal ring-1 ring-teal/30">

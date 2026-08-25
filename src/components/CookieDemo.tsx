@@ -42,34 +42,30 @@ export const DEFAULT_CONFIG: BannerConfig = {
 
 export interface ConsentState {
   necessary: boolean;
-  functional: boolean;
-  analytics: boolean;
-  performance: boolean;
-  advertising: boolean;
+  preferences: boolean;
+  statistics: boolean;
+  marketing: boolean;
 }
 
 export const NO_CONSENT: ConsentState = {
   necessary: true,
-  functional: false,
-  analytics: false,
-  performance: false,
-  advertising: false,
+  preferences: false,
+  statistics: false,
+  marketing: false,
 };
 
 export const ALL_CONSENT: ConsentState = {
   necessary: true,
-  functional: true,
-  analytics: true,
-  performance: true,
-  advertising: true,
+  preferences: true,
+  statistics: true,
+  marketing: true,
 };
 
 export const CATEGORIES: { key: keyof ConsentState; label: string; desc: string; locked?: boolean }[] = [
   { key: "necessary", label: "Necesarias", desc: "Sesión, seguridad y carrito. No se pueden desactivar.", locked: true },
-  { key: "functional", label: "Funcionales", desc: "Idioma, región, chat y reproductores." },
-  { key: "analytics", label: "Analíticas", desc: "Métricas agregadas y anónimas de uso." },
-  { key: "performance", label: "Rendimiento", desc: "Tiempos de carga y optimización." },
-  { key: "advertising", label: "Publicidad", desc: "Anuncios relevantes y limitación de frecuencia." },
+  { key: "preferences", label: "Preferencias", desc: "Idioma, región y personalización." },
+  { key: "statistics", label: "Estadísticas", desc: "Métricas agregadas y anónimas de uso." },
+  { key: "marketing", label: "Marketing", desc: "Anuncios relevantes y limitación de frecuencia." },
 ];
 
 /* ------------------------------------------------------- fake site ---- */
@@ -263,12 +259,13 @@ export function CookieDemo({ config, replayKey, variant = "cafe", height = "h-[3
                     Política de cookies
                   </span>
                 </p>
+                {/* Tres botones al mismo nivel, idéntica visibilidad (EDPB 05/2020) */}
                 <div className={`mt-2.5 flex flex-wrap items-center gap-1.5 ${isBar || isFloating ? "justify-end" : ""}`}>
                   <button
                     type="button"
                     onClick={() => decide(ALL_CONSENT)}
-                    className="rounded-md px-2.5 py-1.5 text-[10.5px] font-bold text-white transition-transform duration-150 hover:scale-105 active:scale-95"
-                    style={{ backgroundColor: config.accent }}
+                    className="min-w-[84px] rounded-md border-2 px-2.5 py-1.5 text-[10.5px] font-bold text-white transition-transform duration-150 hover:scale-105 active:scale-95"
+                    style={{ backgroundColor: "#28a745", borderColor: "#28a745" }}
                   >
                     {config.acceptLabel}
                   </button>
@@ -276,8 +273,8 @@ export function CookieDemo({ config, replayKey, variant = "cafe", height = "h-[3
                     <button
                       type="button"
                       onClick={() => decide(NO_CONSENT)}
-                      className="rounded-md border px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors duration-150 hover:bg-white/10"
-                      style={{ borderColor: `${config.text}44`, color: config.text }}
+                      className="min-w-[84px] rounded-md border-2 px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors duration-150 hover:brightness-95"
+                      style={{ backgroundColor: "#f8f9fa", borderColor: "#6c757d", color: "#212529" }}
                     >
                       {config.rejectLabel}
                     </button>
@@ -285,8 +282,8 @@ export function CookieDemo({ config, replayKey, variant = "cafe", height = "h-[3
                   <button
                     type="button"
                     onClick={() => setPrefsOpen(true)}
-                    className="px-1 py-1.5 text-[10.5px] font-semibold underline underline-offset-2 transition-opacity hover:opacity-75"
-                    style={{ color: config.text }}
+                    className="min-w-[84px] rounded-md border-2 bg-transparent px-2.5 py-1.5 text-[10.5px] font-semibold transition-colors duration-150 hover:bg-[#005fcc]/10"
+                    style={{ borderColor: "#005fcc", color: "#005fcc" }}
                   >
                     {config.prefsLabel}
                   </button>

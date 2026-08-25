@@ -100,23 +100,23 @@ export function Reviews() {
 const FAQS = [
   {
     q: "¿Es gratis de verdad o hay trampa?",
-    a: "Gratis de verdad, bajo licencia GPLv2 o posterior: el código es tuyo, para siempre, sin límite de sitios ni de visitas. El escáner, el registro de consentimiento, Consent Mode v2, TCF, CCPA y la geolocalización están incluidos. Consentia Pro (escaneos cloud, GVL completa, white-label) es opcional.",
+    a: "Gratis de verdad, bajo licencia GPLv2 o posterior: el código es tuyo, para siempre, sin límite de sitios ni de visitas. El registro probatorio, la política de cookies automática, Consent Mode v2, TCF, CCPA y la geolocalización están incluidos. Consentia Pro (GVL completa, white-label, informes multi-sitio) es opcional.",
   },
   {
     q: "¿En qué se diferencia de CookieYes u otras CMP?",
-    a: "En una cosa fundamental: Consentia es autoalojado. No hay SaaS, ni cuentas, ni API keys, ni un SDK cargando desde servidores de terceros. Las decisiones de tus visitantes se guardan en tu propia base de datos (tabla wp_consentia_log) y el banner pesa ~12 KB sin ninguna petición externa. Y lo que otras CMP cobran en planes Business aquí viene gratis.",
+    a: "En una cosa fundamental: Consentia es autoalojado. No hay SaaS, ni cuentas, ni API keys, ni un SDK cargando desde servidores de terceros. Las decisiones de tus visitantes se guardan en tu propia base de datos (tabla wp_consentia_consents) y el banner pesa ~12 KB sin ninguna petición externa obligatoria. Y lo que otras CMP cobran en planes Business aquí viene gratis.",
   },
   {
-    q: "¿Qué hace exactamente el escáner de cookies?",
-    a: "Audita tu sitio en dos pasadas: las cookies presentes en el servidor ($_COOKIE) y en el navegador (document.cookie), más los scripts de terceros conocidos (GA4, Meta Pixel, Hotjar, Clarity, TikTok, DoubleClick, chats…). Clasifica cada elemento contra una base de patrones y te deja reclasificarlo y guardarlo para redactar tu política de cookies.",
+    q: "¿Cómo genero la política de cookies?",
+    a: "Con el shortcode [consentia_policy] en cualquier página. Genera una política completa y actualizada: qué son las cookies, las 4 categorías con finalidad y duración, las cookies concretas (consentia_consent, _ga, _fbp…), las transferencias internacionales, cómo gestionarlas en cada navegador y los derechos del usuario ante la AEPD. Solo enlázala en el banner.",
   },
   {
     q: "¿Sirve el registro como prueba de cumplimiento?",
-    a: "Sí. Cada decisión se guarda con UUID, fecha/hora, categorías aceptadas, origen (banner, GPC, sincronización) y país, en una tabla propia de tu WordPress. Puedes exportarlo a CSV y la retención se limpia sola según los días que configures.",
+    a: "Sí, es el corazón del art. 7.1 RGPD. Cada decisión (aceptada, rechazada, actualizada o revocada) se guarda en wp_consentia_consents con fecha y hora, categorías aceptadas, tipo de decisión, IP anonimizada, user agent, URL y versión del plugin. Lo exportas a CSV desde Ajustes → Consentia → Registro, y la retención se limpia sola según los días que configures.",
   },
   {
     q: "¿Bloquea realmente Google Analytics y el píxel de Meta?",
-    a: "Sí. Marca cada snippet con type=\"text/plain\" y data-consentia=\"analytics\" (o \"advertising\") y Consentia no lo ejecutará hasta que haya consentimiento. Para GA4 ni eso hace falta: escribe tu ID G-XXXXXXX en Ajustes → Consentia y el plugin inyecta gtag.js solo cuando se aceptan las analíticas.",
+    a: "Sí. Marca cada snippet con type=\"text/consentia\" y data-consentia-category=\"statistics\" (o \"marketing\") y Consentia no lo ejecutará hasta que haya consentimiento — se activa al instante, sin recargar. También seguimos soportando el formato antiguo type=\"text/plain\" + data-consentia. Para GA4 ni eso hace falta: escribe tu ID G-XXXXXXX en Ajustes → Consentia y el plugin inyecta gtag.js solo cuando se aceptan las Estadísticas.",
   },
   {
     q: "¿Funciona con plugins de caché como WP Rocket o LiteSpeed?",
@@ -124,7 +124,7 @@ const FAQS = [
   },
   {
     q: "¿Cada cuánto se vuelve a pedir el consentimiento?",
-    a: "Por defecto cada 6 meses, que es el periodo que recomiendan la CNIL y la AEPD. Puedes ajustarlo entre 1 y 24 meses en los ajustes; al caducar, el banner reaparece automáticamente.",
+    a: "Por defecto cada 6 meses, que es el periodo que recomiendan la CNIL y la AEPD. Puedes ajustarlo entre 1 y 12 meses (el máximo legal son 365 días); al caducar, el plugin borra las cookies y el banner reaparece automáticamente.",
   },
   {
     q: "¿Consentia envía mis datos a algún servidor externo?",

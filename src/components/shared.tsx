@@ -242,6 +242,13 @@ export const Icons = {
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   ),
+  doc: ({ className = base }: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6M9 9h1" />
+    </svg>
+  ),
 };
 
 export function Stars({ count = 5, size = "w-4 h-4" }: { count?: number; size?: string }) {

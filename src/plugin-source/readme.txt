@@ -1,113 +1,108 @@
-=== Consentia – Cookie Consent & GDPR ===
-Contributors: consentia, thecreatorbusiness
-Donate link: https://consentia.dev/
-Tags: gdpr, cookies, cookie consent, cookie law, rgpd, ccpa, privacy, banner, consent mode, tcf
+=== Consentia – Cookie Consent & GDPR (RGPD / LSSI-CE) ===
+Contributors: consentia
+Tags: gdpr, rgpd, cookies, cookie consent, cookie law, ccpa, eprivacy, lssi, privacy, banner
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Self-hosted cookie consent platform: banner with real script blocking, cookie scanner, consent log with CSV export, Google Consent Mode v2, IAB TCF v2.2, CCPA/CPRA and geolocation. No SaaS, no visit limits.
+Cumplimiento RGPD, LSSI-CE y ePrivacy autoalojado: banner con tres botones de igual visibilidad, bloqueo previo real de scripts, registro probatorio en tu base de datos, widget de revocación y política de cookies con [consentia_policy].
 
 == Description ==
 
-Consentia is a **self-hosted** consent management platform for WordPress. Everything runs on your server: no third-party scripts, no accounts, no per-visit billing, and visitor decisions never leave your database.
+Consentia convierte el cumplimiento de cookies en algo que puedes demostrar, no solo mostrar. Todo vive en tu propio WordPress: sin SaaS, sin cuentas y sin enviar las decisiones de tus visitantes a servidores de terceros.
 
-= What you get, free =
+= Cumplimiento legal verificable =
 
-* **Real script blocking** — scripts marked with `type="text/plain" data-consentia="analytics"` only execute after consent, and activate instantly (no reload).
-* **5 granular categories** — Necessary (locked), Functional, Analytics, Performance and Advertising. Switch any of them off in the admin.
-* **Cookie scanner** — audits server cookies, browser cookies and known third-party scripts (GA4, Meta Pixel, Hotjar, Clarity, TikTok, DoubleClick, chats…). Re-classify and save the results for your cookie policy.
-* **Consent log** — every decision stored with UUID, timestamp, categories, source (banner, GPC, sync) and country, in its own table. CSV export, automatic retention and purge tool. Your proof of compliance.
-* **Google Consent Mode v2** — sends `ad_storage`, `analytics_storage`, `ad_user_data`, `ad_personalization`, `functionality_storage` and `security_storage` signals. Basic and advanced modes.
-* **IAB TCF v2.2** — registers `__tcfapi` and generates a valid TC string from the visitor's choices (purpose-level).
-* **CCPA / CPRA** — "Do Not Sell or Share My Personal Information" link and opt-out mode for US visitors.
-* **Global Privacy Control** — if the browser sends GPC, Consentia registers an opt-out without showing the banner.
-* **Geolocation** — show the banner only to EU/EEA/UK visitors (Cloudflare header, MaxMind GeoIP2 or the geoip extension; unknown country = EU rules).
-* **Cross-domain consent sync** — one decision propagates to your sibling domains via postMessage.
-* **Consent statistics** — 30-day stacked chart of accepted / rejected / custom decisions, right in the admin.
-* **Revisit button** — a floating button lets visitors reopen their preferences from any page, as regulators require.
-* **Renewal rules** — ask again after N months (default 6) or when the banner text changes.
-* **GA4 integration** — paste your Measurement ID and gtag.js is injected only when analytics is accepted.
-* **Customizable** — card, full-width bar or floating pill; 4 positions; colors, radius, texts, delay, custom CSS. Live preview in the admin.
-* **Tiny** — ~12 KB min+gzip, zero jQuery, deferred, respects `prefers-reduced-motion`.
-* **Accessible** — `role="dialog"`, focus management, keyboard support (Tab, Esc), screen-reader friendly.
-* **Multisite + i18n** — works on networks; Spanish translation included. Text domain: `consentia`.
-* **Shortcodes & JS API** — `[consentia_manage]`, `[consentia_status]`, `Consentia.open()`, `Consentia.status()`, events `consentia:granted` / `consentia:updated`.
+* **Consentimiento explícito**: solo un clic lo otorga. El scroll, el movimiento del ratón o la navegación NUNCA cuentan (considerando 32 RGPD).
+* **Tres botones al mismo nivel** — «Aceptar todas», «Rechazar» y «Configurar» con idéntico tamaño y visibilidad, como exige la directriz EDPB 05/2020. Rechazar es tan fácil como aceptar.
+* **Bloqueo previo real**: los scripts marcados `type="text/consentia"` no se ejecutan hasta que hay consentimiento (art. 5.3 ePrivacy), y se activan al instante sin recargar.
+* **Casillas desmarcadas por defecto**: solo «Necesarias» está activa (y bloqueada), el resto empieza en OFF.
+* **Registro probatorio** (art. 7.1 RGPD): cada decisión se guarda en `wp_consentia_consents` con fecha, categorías, origen, IP anonimizada, user agent y versión. Exportable a CSV.
+* **Revocación en un clic**: widget flotante «Configuración de Cookies» que retira el consentimiento y recarga para bloquear todo al momento (art. 7.3 RGPD).
+* **Caducidad a 365 días** como máximo legal; por defecto se vuelve a pedir a los 6 meses (recomendación CNIL/AEPD).
+* **Política de cookies completa** con el shortcode `[consentia_policy]`: categorías, cookies concretas, transferencias internacionales, gestión por navegador y derechos ante la AEPD.
 
-= Pro (coming soon) =
+= Accesibilidad WCAG 2.1 AA =
 
-Cloud weekly scans, full Global Vendor List (GVL) integration with per-vendor consent, white-label, unlimited sync domains and priority support.
+`role="alertdialog"`, gestión de foco, Tab atrapado en el panel, cierre con Escape, anuncios `aria-live` («Has aceptado todas las cookies»), foco visible de 3px y soporte de `prefers-reduced-motion`.
+
+= Además =
+
+* 4 categorías legales: Necesarias, Preferencias, Estadísticas y Marketing.
+* Cookies técnicas `consentia_consent`, `consentia_consent_date` y `consentia_categories` (expiran a 365 días).
+* Global Privacy Control respetado automáticamente.
+* Geolocalización UE/EEE/Reino Unido + California (Cloudflare, MaxMind, geoip o ipapi.co), fail-closed.
+* Google Consent Mode v2 e IAB TCF v2.2 opcionales.
+* Inyección de GA4 solo si se aceptan las Estadísticas.
+* Escáner de cookies y scripts de terceros.
+* ~12 KB, cero jQuery, sin peticiones externas obligatorias.
+* Multisitio, WPML/Polylang y traducción española incluida. Text domain `consentia`.
 
 == Installation ==
 
-1. Upload the `consentia` folder to `/wp-content/plugins/`, or install it from *Plugins → Add New*.
-2. Activate the plugin through the *Plugins* screen.
-3. Go to *Settings → Consentia*, customize the banner and run the **Scanner** tab to audit your cookies.
+1. Sube la carpeta `consentia` a `/wp-content/plugins/` o instala desde *Plugins → Añadir nuevo*.
+2. Actívalo: se crea la tabla de registro y las opciones por defecto.
+3. Ve a *Ajustes → Consentia* y personaliza el banner (vista previa en vivo).
+4. Crea una página con el shortcode `[consentia_policy]` y enlázala en «URL política de cookies».
 
-= Blocking a script =
+= Bloquear un script =
 
-Change the script `type` to `text/plain` and add the category:
+Cambia el `type` a `text/consentia` e indica la categoría:
 
-`<script type="text/plain" data-consentia="analytics" src="https://example.com/stats.js"></script>`
+`<script type="text/consentia" data-consentia-category="statistics" src="https://example.com/stats.js"></script>`
 
-Valid categories: `necessary`, `functional`, `analytics`, `performance`, `advertising`. You can list several: `data-consentia="analytics performance"`.
+Categorías válidas: `necessary`, `preferences`, `statistics`, `marketing`.
 
 == Frequently Asked Questions ==
 
-= Is Consentia free? =
-Yes. Consentia is free forever under GPLv2, with no visit limits. Consentia Pro (cloud scans, full GVL, white-label) is optional.
+= ¿Cumple realmente el RGPD y la LSSI? =
+Sí, por diseño: consentimiento explícito por clic, bloqueo previo de scripts, casillas desmarcadas, registro probatorio con IP y fecha, revocación accesible y caducidad máxima de 365 días. No es un banner decorativo.
 
-= Do I need an account or an API key? =
-No. That's the point: Consentia is self-hosted. Decisions are stored in your own database table `wp_consentia_log` and never sent to third parties.
+= ¿El botón «Rechazar» es menos visible que «Aceptar»? =
+Nunca. Ambos botones comparten exactamente el mismo tamaño, padding y presencia de borde. Es un requisito legal y está forzado en el CSS.
 
-= Does it really block Google Analytics / Meta Pixel? =
-Yes. Wrap snippets with `data-consentia="analytics"` (or the matching category) and they won't run until consent. For GA4 you can simply paste your Measurement ID in the settings.
+= ¿Qué guarda en la base de datos? =
+La decisión (aceptada/rechazada/actualizada/revocada), las categorías, fecha y hora, versión del plugin, URL y user agent. La IP solo se guarda si la activas, y siempre como hash irreversible.
 
-= Does it support Google Consent Mode v2? =
-Yes. Enable it in Settings → Consentia → Cumplimiento. Default signals are sent before consent and updated after, in basic or advanced mode.
+= ¿Cómo demuestro el consentimiento ante una inspección? =
+Exporta el registro a CSV desde Ajustes → Consentia → Registro. Cada fila incluye cuándo y qué aceptó el visitante.
 
-= What about IAB TCF? =
-Consentia registers the standard `__tcfapi` and produces a valid TC string (purpose-level, policy v2.2). For vendor-level consent you'll want Consentia Pro.
+= ¿Puedo revocar el consentimiento? =
+Sí, con el widget flotante «Configuración de Cookies» o el shortcode `[consentia_manage]`. Al retirar, la página se recarga y todo lo no esencial se bloquea.
 
-= How long is consent remembered? =
-Six months by default (1–24 configurable). You can also force re-consent whenever the banner text changes.
-
-= How does geolocation work? =
-It reads the Cloudflare `CF-IPCountry` header, a MaxMind `.mmdb` database (geoip2/geoip2 via Composer) or the PHP geoip extension — your choice. Unknown visitors get EU rules, the safe default.
-
-= Does it work with caching plugins? =
-Yes. Settings travel via `wp_localize_script`, so the banner works with page caching. Exclude the `consentia` handle from JS combination only if your optimizer rewrites inline JSON.
+= ¿Funciona con plugins de caché? =
+Sí. El banner se renderiza en PHP y la configuración viaja por `wp_localize_script`, así que es compatible con la página cacheada. Excluye el handle `consentia` de la combinación de JS si tu optimizador reescribe JSON inline.
 
 == Screenshots ==
 
-1. The consent card with the 5-category preferences panel.
-2. Cookie scanner: every cookie and third-party script classified.
-3. Consent log with 30-day chart and CSV export.
-4. Compliance tab: Consent Mode v2, TCF v2.2, CCPA and GPC.
-5. Settings page with live preview.
+1. Banner con los tres botones al mismo nivel.
+2. Segunda capa: categorías desmarcadas por defecto.
+3. Widget flotante de revocación.
+4. Registro de consentimiento en el admin con exportación CSV.
+5. Política de cookies generada por [consentia_policy].
 
 == Changelog ==
 
-= 1.1.0 =
-* New: cookie scanner (server + browser cookies, known tracker scripts).
-* New: consent log with dedicated table, CSV export, retention and purge.
-* New: Google Consent Mode v2 (basic and advanced).
-* New: IAB TCF v2.2 with `__tcfapi` and TC string generation.
-* New: CCPA/CPRA "Do Not Sell or Share" mode for US visitors.
-* New: Global Privacy Control support.
-* New: geolocation (Cloudflare, MaxMind, geoip) with EU/EEA/UK rules.
-* New: cross-domain consent sync via postMessage.
-* New: 5 categories (added Functional and Performance).
-* New: floating pill banner type, animations and custom CSS.
-* New: revisit floating button and consent statistics chart.
+= 1.2.0 =
+* Cumplimiento estricto RGPD / LSSI-CE / ePrivacy.
+* Banner renderizado en PHP con tres botones de idéntica visibilidad (role="alertdialog").
+* Cookies técnicas consentia_consent, consentia_consent_date y consentia_categories (365 días).
+* Bloqueo previo con type="text/consentia" (compatible con el legado text/plain).
+* Registro probatorio en wp_consentia_consents con AJAX, IP anonimizada, user agent, URL y versión.
+* Widget flotante de revocación y shortcode [consentia_manage].
+* Caducidad y renovación del consentimiento (máx. 365 días).
+* Política de cookies con [consentia_policy]: categorías, cookies, transferencias, navegadores y derechos AEPD.
+* Accesibilidad WCAG 2.1 AA: focus trap, Escape, aria-live, foco visible.
+* Geolocalización UE/EEE/UK + California con fallback seguro.
+* Global Privacy Control.
 
 = 1.0.0 =
-* Initial public release.
+* Versión inicial.
 
 == Upgrade Notice ==
 
-= 1.1.0 =
-Major update: scanner, consent log, Consent Mode v2, TCF v2.2, CCPA and geolocation. Existing banner settings are preserved.
+= 1.2.0 =
+Actualización mayor orientada al cumplimiento legal estricto. Revisa Ajustes → Consentia tras actualizar.

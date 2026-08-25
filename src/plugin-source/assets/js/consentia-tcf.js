@@ -72,13 +72,13 @@
 
 	function consentedPurposes(consent) {
 		var set = [];
-		if (consent.functional) {
+		if (consent.preferences) {
 			set.push(3, 5, 6);
 		}
-		if (consent.analytics || consent.performance) {
+		if (consent.statistics) {
 			set.push(7, 8, 9, 10);
 		}
-		if (consent.advertising) {
+		if (consent.marketing) {
 			set.push(2, 3, 4);
 		}
 		return Array.from(new Set(set));
@@ -130,7 +130,7 @@
 		if (window.Consentia && window.Consentia.status) {
 			return window.Consentia.status();
 		}
-		return { necessary: true, functional: false, analytics: false, performance: false, advertising: false, decided: false };
+		return { necessary: true, preferences: false, statistics: false, marketing: false, decided: false };
 	}
 
 	function mapToObject(ids, total) {

@@ -1,7 +1,14 @@
 /**
- * Consentia — banner & preferences styles.
- * All colors flow through CSS custom properties set inline by the
- * plugin, so every site renders its own palette.
+ * Consentia — banner, panel & widget styles (v1.2).
+ *
+ * Mandatory visual rules (EDPB 05/2020 — no dark patterns):
+ *  – Accept and Reject have EXACTLY the same footprint: same min-width,
+ *    same padding, both with a visible border.
+ *  – Accept: green #28a745 / white text.
+ *  – Reject: light #f8f9fa / visible gray border #6c757d / dark text.
+ *  – Configure: blue outline #005fcc.
+ *  – WCAG 2.1 AA: 4.5:1 contrasts, visible focus (3px solid #005fcc),
+ *    .sr-only helper and prefers-reduced-motion support.
  *
  * @package Consentia
  */
@@ -11,10 +18,87 @@
 	--consentia-text: #f3f4f6;
 	--consentia-accent: #2f6fed;
 	--consentia-radius: 14px;
+	--consentia-btn-accept-bg: #28a745;
+	--consentia-btn-reject-bg: #f8f9fa;
+	--consentia-btn-reject-border: #6c757d;
+	--consentia-btn-reject-text: #212529;
+	--consentia-btn-prefs: #005fcc;
+	--consentia-focus: #005fcc;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* ---------------------------------------------------- banner ---- */
+/* ============================================ screen-reader only == */
+
+.consentia-sr-only {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ======================================================= buttons == */
+
+.consentia-btn {
+	appearance: none;
+	cursor: pointer;
+	font: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.25;
+	min-width: 120px;        /* identical footprint for all three */
+	padding: 12px 24px;      /* identical footprint for all three */
+	border-radius: 8px;
+	border: 2px solid transparent;
+	transition: filter 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* WCAG 2.4.7 — focus always visible, 3px solid per spec */
+.consentia-btn:focus-visible,
+.consentia-cat__input:focus-visible + .consentia-cat__box,
+.consentia-widget:focus-visible,
+.consentia-panel__revoke:focus-visible,
+.consentia-manage-button:focus-visible {
+	outline: 3px solid var(--consentia-focus);
+	outline-offset: 2px;
+}
+
+.consentia-btn--accept {
+	background: var(--consentia-btn-accept-bg);
+	border-color: var(--consentia-btn-accept-bg);
+	color: #ffffff;
+}
+
+.consentia-btn--accept:hover {
+	filter: brightness(1.08);
+	box-shadow: 0 4px 14px rgba(40, 167, 69, 0.35);
+}
+
+.consentia-btn--reject {
+	background: var(--consentia-btn-reject-bg);
+	border-color: var(--consentia-btn-reject-border); /* visible border */
+	color: var(--consentia-btn-reject-text);
+}
+
+.consentia-btn--reject:hover {
+	background: #e9ecef;
+}
+
+.consentia-btn--prefs {
+	background: transparent;
+	border-color: var(--consentia-btn-prefs); /* blue outline */
+	color: var(--consentia-btn-prefs);
+}
+
+.consentia-btn--prefs:hover {
+	background: rgba(0, 95, 204, 0.08);
+}
+
+/* ======================================================== banner == */
 
 .consentia-banner {
 	position: fixed;
@@ -23,320 +107,275 @@
 	color: var(--consentia-text);
 	border-radius: var(--consentia-radius);
 	box-shadow: 0 20px 50px rgba(2, 6, 18, 0.35);
-	padding: 20px 22px;
+	padding: 24px;
+	max-width: 440px;
 	opacity: 0;
+	transform: translateY(16px);
 	transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.consentia-banner.consentia-card {
-	max-width: 400px;
-	transform: translateY(16px);
-}
-
-.consentia-banner.consentia-card.consentia-bottom-left   { left: 20px;  bottom: 20px; }
-.consentia-banner.consentia-card.consentia-bottom-right  { right: 20px; bottom: 20px; }
-.consentia-banner.consentia-card.consentia-bottom-center { left: 50%; bottom: 20px; margin-left: -200px; }
-
-.consentia-banner.consentia-bar {
-	left: 0;
-	right: 0;
-	border-radius: 0;
-	transform: translateY(100%);
-}
-
-.consentia-banner.consentia-bar.consentia-top {
-	top: 0;
-	bottom: auto;
-	transform: translateY(-100%);
-}
-
-.consentia-banner.consentia-bar:not(.consentia-top) {
-	bottom: 0;
-}
-
-.consentia-banner.consentia-visible {
+.consentia-banner--visible {
 	opacity: 1;
 	transform: none;
 }
 
-.consentia-banner .consentia-inner {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
+.consentia-banner--hidden {
+	display: none;
 }
 
-.consentia-banner.consentia-bar .consentia-inner {
-	max-width: 1100px;
-	margin: 0 auto;
-	flex-direction: row;
-	align-items: center;
-	gap: 24px;
+.consentia-banner--bottom-left   { left: 20px;  bottom: 20px; }
+.consentia-banner--bottom-right  { right: 20px; bottom: 20px; }
+.consentia-banner--bottom-center { left: 50%;   bottom: 20px; transform: translateX(-50%) translateY(16px); }
+.consentia-banner--bottom-center.consentia-banner--visible { transform: translateX(-50%); }
+
+.consentia-banner--top {
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: auto;
+	max-width: none;
+	border-radius: 0;
+	transform: translateY(-100%);
 }
 
-.consentia-banner.consentia-bar .consentia-message {
-	flex: 1;
+.consentia-banner--top.consentia-banner--visible {
+	transform: none;
 }
 
-.consentia-title {
+.consentia-banner--bar {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-width: none;
+	border-radius: 0;
+	transform: translateY(100%);
+}
+
+.consentia-banner--bar.consentia-banner--visible {
+	transform: none;
+}
+
+.consentia-banner--floating {
+	max-width: 360px;
+	border-radius: 999px;
+	padding: 18px 24px;
+}
+
+.consentia-banner__title {
 	margin: 0;
-	font-size: 16px;
+	font-size: 17px;
 	font-weight: 700;
 	line-height: 1.3;
 }
 
-.consentia-message {
+.consentia-banner__desc {
+	margin: 10px 0 0;
+	font-size: 14px;
+	line-height: 1.55;
+	opacity: 0.85;
+}
+
+.consentia-banner__link {
+	color: var(--consentia-accent);
+	text-decoration: underline;
+}
+
+.consentia-banner__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 18px;
+}
+
+.consentia-banner--bar .consentia-banner__actions,
+.consentia-banner--top .consentia-banner__actions {
+	max-width: 1100px;
+	margin: 18px auto 0;
+}
+
+.consentia-banner--bar .consentia-banner__title,
+.consentia-banner--bar .consentia-banner__desc,
+.consentia-banner--top .consentia-banner__title,
+.consentia-banner--top .consentia-banner__desc {
+	max-width: 1100px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+/* ======================================================== widget == */
+
+.consentia-widget {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	z-index: 999989;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border: 2px solid var(--consentia-btn-reject-border);
+	border-radius: 999px;
+	padding: 10px 16px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 10px 26px rgba(2, 6, 18, 0.3);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.consentia-widget:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 30px rgba(2, 6, 18, 0.38);
+}
+
+/* ========================================================= panel == */
+
+.consentia-panel-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 999994;
+	background: rgba(4, 8, 18, 0.55);
+}
+
+.consentia-panel {
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 999995;
+	width: calc(100% - 40px);
+	max-width: 520px;
+	max-height: calc(100vh - 40px);
+	overflow: auto;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border-radius: var(--consentia-radius);
+	padding: 28px;
+	box-shadow: 0 30px 80px rgba(2, 6, 18, 0.5);
+}
+
+.consentia-panel__title {
 	margin: 0;
+	font-size: 19px;
+	font-weight: 700;
+}
+
+.consentia-panel__intro {
+	margin: 10px 0 18px;
 	font-size: 13.5px;
 	line-height: 1.55;
 	opacity: 0.82;
 }
 
-.consentia-link {
-	color: var(--consentia-accent);
-	text-decoration: underline;
-}
-
-.consentia-actions {
+.consentia-panel__cats {
+	border: 0;
+	margin: 0;
+	padding: 0;
 	display: flex;
-	flex-wrap: wrap;
+	flex-direction: column;
 	gap: 10px;
 }
 
-.consentia-btn {
-	appearance: none;
-	border: 0;
-	cursor: pointer;
-	font: inherit;
-	font-size: 13.5px;
-	font-weight: 600;
-	padding: 10px 16px;
-	border-radius: calc(var(--consentia-radius) * 0.7);
-	background: transparent;
-	color: var(--consentia-text);
-	transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.consentia-btn:focus-visible {
-	outline: 2px solid var(--consentia-accent);
-	outline-offset: 2px;
-}
-
-.consentia-btn-accept {
-	background: var(--consentia-accent);
-	color: #fff;
-}
-
-.consentia-btn-accept:hover {
-	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
-	filter: brightness(1.08);
-}
-
-.consentia-btn-reject {
-	border: 1px solid color-mix(in srgb, var(--consentia-text) 30%, transparent);
-}
-
-.consentia-btn-reject:hover {
-	background: color-mix(in srgb, var(--consentia-text) 12%, transparent);
-}
-
-.consentia-btn-prefs {
-	text-decoration: underline;
-	text-underline-offset: 3px;
-	padding-left: 4px;
-	padding-right: 4px;
-}
-
-/* ------------------------------------------- floating pill ---- */
-
-.consentia-banner.consentia-floating {
-	max-width: 460px;
-	border-radius: 999px;
-	padding: 12px 18px;
-	transform: translateY(16px);
-}
-
-.consentia-banner.consentia-floating .consentia-inner {
-	flex-direction: row;
-	align-items: center;
-	gap: 14px;
-}
-
-.consentia-banner.consentia-floating .consentia-title {
-	display: none;
-}
-
-.consentia-banner.consentia-floating .consentia-message {
-	flex: 1;
-	font-size: 12.5px;
-}
-
-.consentia-banner.consentia-floating .consentia-btn {
-	padding: 8px 14px;
-	white-space: nowrap;
-}
-
-.consentia-banner.consentia-floating.consentia-bottom-left   { left: 16px;  bottom: 16px; }
-.consentia-banner.consentia-floating.consentia-bottom-right  { right: 16px; bottom: 16px; }
-.consentia-banner.consentia-floating.consentia-bottom-center { left: 50%; bottom: 16px; margin-left: -230px; }
-
-/* ---------------------------------------------------- CCPA ---- */
-
-.consentia-btn-ccpa {
-	background: var(--consentia-accent);
-	color: #fff;
-}
-
-.consentia-banner .consentia-message a,
-.consentia-btn-prefs {
-	color: inherit;
-}
-
-/* ------------------------------------------- revisit button ---- */
-
-.consentia-revisit {
-	position: fixed;
-	z-index: 999989;
-	left: 18px;
-	bottom: 18px;
-	width: 44px;
-	height: 44px;
-	display: grid;
-	place-items: center;
-	border: 0;
-	border-radius: 50%;
-	cursor: pointer;
-	background: var(--consentia-accent);
-	color: #fff;
-	box-shadow: 0 8px 24px rgba(2, 6, 18, 0.35);
-	opacity: 0;
-	transform: scale(0.6);
-	transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.consentia-revisit:not([hidden]) {
-	opacity: 1;
-}
-
-.consentia-revisit.consentia-revisit-in {
-	transform: scale(1);
-}
-
-.consentia-revisit:hover {
-	transform: scale(1.08);
-}
-
-.consentia-revisit:focus-visible {
-	outline: 2px solid var(--consentia-text);
-	outline-offset: 3px;
-}
-
-/* ----------------------------------------------------- prefs ---- */
-
-.consentia-prefs {
-	position: fixed;
-	inset: 0;
-	z-index: 999995;
-	background: rgba(4, 8, 18, 0.55);
+.consentia-cat {
 	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 20px;
-	opacity: 0;
-	transition: opacity 0.25s ease;
-}
-
-.consentia-prefs.consentia-visible {
-	opacity: 1;
-}
-
-.consentia-prefs-panel {
-	width: 100%;
-	max-width: 480px;
-	background: var(--consentia-bg);
-	color: var(--consentia-text);
-	border-radius: var(--consentia-radius);
-	padding: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	box-shadow: 0 30px 80px rgba(2, 6, 18, 0.5);
-}
-
-.consentia-pref-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	padding: 12px 14px;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px;
 	border-radius: 10px;
 	background: color-mix(in srgb, var(--consentia-text) 6%, transparent);
 	cursor: pointer;
 }
 
-.consentia-pref-row strong {
-	display: block;
-	font-size: 14px;
-}
-
-.consentia-pref-row small {
-	display: block;
-	margin-top: 3px;
-	font-size: 12px;
-	line-height: 1.45;
-	opacity: 0.7;
-}
-
-.consentia-pref-row.consentia-locked {
+.consentia-cat--locked {
 	opacity: 0.75;
 	cursor: default;
 }
 
-.consentia-switch {
-	position: relative;
-	flex: 0 0 auto;
-}
-
-.consentia-switch input {
+.consentia-cat__input {
 	position: absolute;
 	opacity: 0;
 	pointer-events: none;
 }
 
-.consentia-switch-track {
-	display: block;
-	width: 42px;
-	height: 24px;
-	border-radius: 999px;
-	background: color-mix(in srgb, var(--consentia-text) 22%, transparent);
-	transition: background 0.2s ease;
+.consentia-cat__box {
+	flex: 0 0 auto;
+	width: 22px;
+	height: 22px;
+	margin-top: 2px;
+	border-radius: 6px;
+	border: 2px solid var(--consentia-btn-reject-border);
+	background: transparent;
+	position: relative;
+	transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.consentia-switch-track::after {
+.consentia-cat__input:checked + .consentia-cat__box {
+	background: var(--consentia-btn-accept-bg);
+	border-color: var(--consentia-btn-accept-bg);
+}
+
+.consentia-cat__input:checked + .consentia-cat__box::after {
 	content: "";
 	position: absolute;
-	top: 3px;
-	left: 3px;
-	width: 18px;
-	height: 18px;
-	border-radius: 50%;
-	background: #fff;
-	transition: transform 0.2s ease;
+	left: 6px;
+	top: 2px;
+	width: 6px;
+	height: 11px;
+	border: solid #fff;
+	border-width: 0 2.5px 2.5px 0;
+	transform: rotate(45deg);
 }
 
-.consentia-switch input:checked + .consentia-switch-track {
-	background: var(--consentia-accent);
+.consentia-cat__name {
+	display: block;
+	font-size: 14.5px;
 }
 
-.consentia-switch input:checked + .consentia-switch-track::after {
-	transform: translateX(18px);
+.consentia-cat__badge {
+	font-size: 10.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	opacity: 0.65;
 }
 
-.consentia-switch input:focus-visible + .consentia-switch-track {
-	outline: 2px solid var(--consentia-accent);
-	outline-offset: 2px;
+.consentia-cat__desc {
+	display: block;
+	margin-top: 3px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	opacity: 0.72;
 }
 
-/* ------------------------------------------------- shortcodes ---- */
+.consentia-panel__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 20px;
+}
+
+.consentia-panel__revoke {
+	display: block;
+	margin: 18px 0 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	cursor: pointer;
+	font: inherit;
+	font-size: 12.5px;
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	opacity: 0.75;
+}
+
+.consentia-panel__revoke:hover {
+	opacity: 1;
+}
+
+/* ===================================================== shortcodes == */
 
 .consentia-manage-button {
 	appearance: none;
@@ -350,37 +389,43 @@
 	text-underline-offset: 3px;
 }
 
-/* ------------------------------------------------- responsive ---- */
+/* ===================================================== responsive == */
 
 @media (max-width: 640px) {
-	.consentia-banner.consentia-card {
-		left: 12px;
-		right: 12px;
+	.consentia-banner {
+		left: 12px !important;
+		right: 12px !important;
 		bottom: 12px;
 		max-width: none;
-		margin-left: 0;
+		transform: none;
 	}
 
-	.consentia-banner.consentia-floating {
-		left: 12px;
-		right: 12px;
-		max-width: none;
-		margin-left: 0;
-		border-radius: var(--consentia-radius);
+	.consentia-banner--top {
+		left: 0 !important;
+		right: 0 !important;
+		bottom: auto;
 	}
 
-	.consentia-banner.consentia-bar .consentia-inner {
+	.consentia-banner__actions {
 		flex-direction: column;
-		align-items: stretch;
+	}
+
+	.consentia-btn {
+		width: 100%; /* same size for everyone, also stacked */
+	}
+
+	.consentia-panel {
+		padding: 20px;
 	}
 }
 
+/* ============================================== reduced motion == */
+
 @media (prefers-reduced-motion: reduce) {
 	.consentia-banner,
-	.consentia-prefs,
 	.consentia-btn,
-	.consentia-switch-track,
-	.consentia-switch-track::after {
-		transition: none;
+	.consentia-widget,
+	.consentia-cat__box {
+		transition: none !important;
 	}
 }

@@ -1,563 +1,504 @@
 /**
- * Consentia — banner, granular consent, real script blocking,
- * Google Consent Mode v2, GPC support, consent log, cross-domain
- * sync and public JS API.
+ * Consentia — consent engine (v1.2, strict RGPD / LSSI-CE / ePrivacy).
  *
- * Zero dependencies. ~12 KB minified.
+ * Legal guarantees implemented here:
+ *  – Consent is ONLY given by an explicit click. Scrolling, mouse moves
+ *    or navigation NEVER count (GDPR recital 32).
+ *  – Non-essential checkboxes start unchecked; "necessary" is locked.
+ *  – Prior blocking: scripts marked type="text/consentia" are activated
+ *    only after a decision (ePrivacy art. 5.3).
+ *  – Technical cookies expire at 365 days maximum.
+ *  – Every decision is sent to WordPress (proof of consent, art. 7.1).
+ *  – Withdrawal is one click + automatic reload (art. 7.3).
+ *  – WCAG 2.1 AA: focus trap, Escape to close, aria-live announcements.
  *
  * @package Consentia
  */
 (function () {
 	'use strict';
 
-	if (window.Consentia) {
-		return; // One instance per page.
-	}
-
 	var data = window.consentiaData || {};
 	var settings = data.settings || {};
-	var categories = data.categories || {};
-	var consentVersion = String(data.consent_version || '');
+	var strings = data.strings || {};
+	var ajax = data.ajax || {};
 
-	var COOKIE = 'consentia';
-	var ALL = ['necessary', 'functional', 'analytics', 'performance', 'advertising'];
-	var root = document.getElementById('consentia-root');
-	var decided = false;
-	var state = buildConsent({});
+	/** Technical cookies written by the plugin (365 days max). */
+	var COOKIE_CONSENT = 'consentia_consent'; // 'granted' | 'rejected'
+	var COOKIE_DATE = 'consentia_consent_date'; // timestamp ms
+	var COOKIE_CATS = 'consentia_categories'; // JSON
+	var MAX_DAYS = 365; // ePrivacy: no consent cookies beyond one year
 
-	if (!root) {
-		return;
+	var banner = document.getElementById('consentia-banner');
+	var panel = document.getElementById('consentia-panel');
+	var overlay = document.getElementById('consentia-panel-overlay');
+	var live = document.getElementById('consentia-live');
+	var widget = null;
+	var lastFocused = null;
+
+	/* ================================================== cookies API == */
+
+	/**
+	 * Sets a cookie with day-based expiry (technical cookie helper).
+	 * SameSite=Lax + Secure when HTTPS.
+	 *
+	 * @param {string} name  Cookie name.
+	 * @param {string} value Cookie value.
+	 * @param {number} days  Lifetime in days (capped at 365).
+	 */
+	function setCookie(name, value, days) {
+		var capped = Math.min(Math.max(days, 1), MAX_DAYS);
+		var expires = new Date(Date.now() + capped * 864e5).toUTCString();
+		var secure = window.location.protocol === 'https:' ? '; Secure' : '';
+		document.cookie =
+			name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/; SameSite=Lax' + secure;
 	}
 
-	/* ---------------------------------------------------- consent ---- */
+	/**
+	 * Reads a cookie value.
+	 *
+	 * @param {string} name Cookie name.
+	 * @returns {string|null}
+	 */
+	function getCookie(name) {
+		var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+		return match ? decodeURIComponent(match[1]) : null;
+	}
 
-	function buildConsent(partial) {
-		var c = { necessary: true, functional: false, analytics: false, performance: false, advertising: false };
-		for (var k in partial) {
-			if (Object.prototype.hasOwnProperty.call(c, k)) {
-				c[k] = !!partial[k];
-			}
+	/**
+	 * Deletes a cookie by expiring it in the past.
+	 *
+	 * @param {string} name Cookie name.
+	 */
+	function deleteCookie(name) {
+		document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+	}
+
+	/* ================================================ screen reader == */
+
+	/**
+	 * Announces a message to assistive technology (WCAG 4.1.3).
+	 *
+	 * @param {string} message Text to announce.
+	 */
+	function announceToScreenReader(message) {
+		if (!live) return;
+		live.textContent = '';
+		window.setTimeout(function () {
+			live.textContent = message;
+		}, 60);
+	}
+
+	/* ================================================== backend log == */
+
+	/**
+	 * Sends the decision to WordPress so it is stored as legal proof
+	 * (table wp_consentia_consents). Uses fetch with sendBeacon fallback.
+	 *
+	 * @param {Object} categories Category map, e.g. {necessary:true,…}.
+	 * @param {string} type       granted|rejected|updated|revoked|gpc|reset.
+	 */
+	function saveToBackend(categories, type) {
+		if (!ajax.url) return;
+
+		var body = new URLSearchParams();
+		body.append('action', 'consentia_save_consent');
+		body.append('nonce', ajax.nonce || '');
+		body.append('categories', JSON.stringify(categories));
+		body.append('consent_type', type);
+		body.append('url', window.location.href);
+
+		if (window.fetch) {
+			window
+				.fetch(ajax.url, { method: 'POST', body: body, keepalive: true })
+				.catch(function () {
+					if (navigator.sendBeacon) {
+						navigator.sendBeacon(ajax.url, body);
+					}
+				});
+		} else if (navigator.sendBeacon) {
+			navigator.sendBeacon(ajax.url, body);
 		}
-		c.necessary = true; // Can never be off.
-		return c;
 	}
 
-	function allGranted() {
-		return buildConsent({ functional: true, analytics: true, performance: true, advertising: true });
+	/* ============================================ script activation == */
+
+	/**
+	 * Activates blocked scripts whose category was accepted.
+	 *
+	 * Mark-up contract (prior blocking, ePrivacy art. 5.3):
+	 *   <script type="text/consentia" data-consentia-category="statistics" src="…">
+	 * Legacy contract also supported:
+	 *   <script type="text/plain" data-consentia="statistics" src="…">
+	 *
+	 * Scripts are cloned as real <script> elements in place; inline code
+	 * runs exactly once. No page reload needed.
+	 *
+	 * @param {Object} categories Accepted category map.
+	 */
+	function enableScriptsByCategory(categories) {
+		var selectors = ['script[type="text/consentia"]', 'script[type="text/plain"][data-consentia]'];
+		var blocked = document.querySelectorAll(selectors.join(','));
+
+		Array.prototype.forEach.call(blocked, function (el) {
+			var category = el.getAttribute('data-consentia-category') || el.getAttribute('data-consentia') || 'necessary';
+
+			if (!categories[category]) {
+				return; // Not accepted: stays blocked.
+			}
+
+			var real = document.createElement('script');
+			Array.prototype.forEach.call(el.attributes, function (attr) {
+				if (attr.name === 'type' || attr.name.indexOf('data-consentia') === 0) return;
+				real.setAttribute(attr.name, attr.value);
+			});
+			real.type = 'text/javascript';
+			if (el.src) real.src = el.src;
+			real.textContent = el.textContent;
+
+			el.parentNode.replaceChild(real, el);
+		});
+
+		// GA4: only injected when "statistics" was explicitly accepted.
+		if (categories.statistics && settings.ga_id) {
+			injectGA4(settings.ga_id);
+		}
 	}
 
-	/* ---------------------------------------------------- storage ---- */
+	/**
+	 * Loads gtag.js and configures GA4 (statistics category only).
+	 *
+	 * @param {string} gaId Measurement ID, e.g. G-XXXXXXX.
+	 */
+	function injectGA4(gaId) {
+		if (window.__consentiaGaLoaded) return;
+		window.__consentiaGaLoaded = true;
+		window.dataLayer = window.dataLayer || [];
+		window.gtag = function () {
+			window.dataLayer.push(arguments);
+		};
+		window.gtag('js', new Date());
+		window.gtag('config', gaId, { anonymize_ip: true });
 
-	function renewMs() {
-		var months = parseInt(settings.renew_months || 6, 10);
-		return Math.max(1, months) * 30 * 24 * 3600 * 1000;
+		var s = document.createElement('script');
+		s.async = true;
+		s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(gaId);
+		document.head.appendChild(s);
 	}
 
-	function readStored() {
+	/* ================================================== decisions == */
+
+	/**
+	 * Reads the current panel checkboxes into a category map.
+	 * Necessary is always true; everything else exactly what the user
+	 * ticked (unchecked by default, as GDPR demands).
+	 *
+	 * @returns {Object}
+	 */
+	function readPanelCategories() {
+		var out = { necessary: true, preferences: false, statistics: false, marketing: false };
+		var inputs = document.querySelectorAll('.consentia-cat__input');
+		Array.prototype.forEach.call(inputs, function (input) {
+			var key = input.getAttribute('data-category');
+			if (key && out.hasOwnProperty(key)) {
+				out[key] = !!input.checked;
+			}
+		});
+		return out;
+	}
+
+	/**
+	 * Stores the full consent state in technical cookies.
+	 *
+	 * @param {string} decision   'granted' | 'rejected'.
+	 * @param {Object} categories Accepted category map.
+	 */
+	function writeConsentCookies(decision, categories) {
+		setCookie(COOKIE_CONSENT, decision, MAX_DAYS);
+		setCookie(COOKIE_DATE, String(Date.now()), MAX_DAYS);
+		setCookie(COOKIE_CATS, JSON.stringify(categories), MAX_DAYS);
+	}
+
+	/**
+	 * Accepts the given categories after an EXPLICIT click only.
+	 * Writes cookies (≤365 days), logs to the database, enables the
+	 * accepted scripts, hides the banner and shows the widget.
+	 *
+	 * @param {Object} categories Category map.
+	 * @param {string} [type]     granted | updated.
+	 */
+	function grantConsent(categories, type) {
+		writeConsentCookies('granted', categories);
+		saveToBackend(categories, type || 'granted');
+		enableScriptsByCategory(categories);
+		hideBanner();
+		closePanel();
+		renderWidget();
+		announceToScreenReader(strings.accepted || 'Has aceptado todas las cookies');
+		document.dispatchEvent(new CustomEvent('consentia:granted', { detail: categories }));
+	}
+
+	/**
+	 * Rejects all non-essential cookies after an EXPLICIT click.
+	 * No non-essential script is executed. Cookies are still written so
+	 * the banner does not reappear, and the decision is logged.
+	 */
+	function rejectConsent() {
+		var categories = { necessary: true, preferences: false, statistics: false, marketing: false };
+		writeConsentCookies('rejected', categories);
+		saveToBackend(categories, 'rejected');
+		hideBanner();
+		closePanel();
+		renderWidget(); // Revocation must stay one click away (GDPR art. 7.3).
+		announceToScreenReader(strings.rejected || 'Has rechazado las cookies no esenciales');
+		document.dispatchEvent(new CustomEvent('consentia:granted', { detail: categories }));
+	}
+
+	/**
+	 * Withdraws consent completely (GDPR art. 7.3): removes every
+	 * consent cookie, logs the withdrawal and reloads the page so all
+	 * non-essential scripts stop immediately.
+	 */
+	function revokeConsent() {
+		deleteCookie(COOKIE_CONSENT);
+		deleteCookie(COOKIE_DATE);
+		deleteCookie(COOKIE_CATS);
+		saveToBackend({ necessary: true }, 'revoked');
+		announceToScreenReader(strings.revoked || 'Consentimiento retirado. Recargando…');
+		window.setTimeout(function () {
+			window.location.reload();
+		}, 350);
+	}
+
+	/* ==================================================== UI show == */
+
+	function hideBanner() {
+		if (!banner) return;
+		banner.classList.add('consentia-banner--hidden');
+		banner.setAttribute('aria-hidden', 'true');
+	}
+
+	function showBanner() {
+		if (!banner) return;
+		banner.removeAttribute('aria-hidden');
+		var delay = parseInt(settings.show_delay_ms || 0, 10);
+		window.setTimeout(function () {
+			banner.classList.remove('consentia-banner--hidden');
+			banner.classList.add('consentia-banner--visible');
+			var first = banner.querySelector('button');
+			if (first && !panelIsOpen()) first.focus({ preventScroll: true });
+		}, isNaN(delay) ? 0 : delay);
+	}
+
+	/**
+	 * Floating widget (bottom-right) to reopen preferences or withdraw
+	 * consent at any time. Shown once a decision exists.
+	 */
+	function renderWidget() {
+		if (widget) return;
+		widget = document.createElement('button');
+		widget.type = 'button';
+		widget.id = 'consentia-widget';
+		widget.className = 'consentia-widget';
+		widget.setAttribute('aria-haspopup', 'dialog');
+		widget.innerHTML =
+			'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+			'<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.1" fill="currentColor"/>' +
+			'<circle cx="14.5" cy="13" r="1.1" fill="currentColor"/><circle cx="10.5" cy="15" r="1" fill="currentColor"/>' +
+			'<path d="M12 3a9 9 0 019 9h-6a3 3 0 01-3-3V3z" fill="currentColor" opacity=".35"/></svg>' +
+			'<span></span>';
+		widget.querySelector('span').textContent = strings.widget || 'Configuración de Cookies';
+		widget.addEventListener('click', openSettings);
+		document.body.appendChild(widget);
+	}
+
+	/* ============================================ second layer panel == */
+
+	function panelIsOpen() {
+		return panel && !panel.hidden;
+	}
+
+	/** Opens the settings panel with focus management (WCAG 2.4.3). */
+	function openSettings() {
+		if (!panel) return;
+		lastFocused = document.activeElement;
+
+		// Sync checkboxes with the stored decision (if any).
+		var stored = getStoredCategories();
+		var inputs = panel.querySelectorAll('.consentia-cat__input');
+		Array.prototype.forEach.call(inputs, function (input) {
+			if (input.disabled) return; // necessary stays checked
+			var key = input.getAttribute('data-category');
+			input.checked = !!(stored && stored[key]);
+		});
+
+		if (overlay) overlay.hidden = false;
+		panel.hidden = false;
+		panel.classList.add('consentia-panel--visible');
+		document.addEventListener('keydown', onPanelKeydown);
+
+		var first = panel.querySelector('input, button');
+		if (first) first.focus({ preventScroll: true });
+	}
+
+	function closePanel() {
+		if (!panel) return;
+		panel.hidden = true;
+		panel.classList.remove('consentia-panel--visible');
+		if (overlay) overlay.hidden = true;
+		document.removeEventListener('keydown', onPanelKeydown);
+		if (lastFocused && lastFocused.focus) lastFocused.focus({ preventScroll: true });
+	}
+
+	/**
+	 * Keyboard support inside the panel: Escape closes it and Tab is
+	 * trapped cycling through focusable elements (WCAG 2.1.2).
+	 *
+	 * @param {KeyboardEvent} e
+	 */
+	function onPanelKeydown(e) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			closePanel();
+			return;
+		}
+		if (e.key !== 'Tab' || !panel) return;
+
+		var focusables = panel.querySelectorAll('button, [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+		if (!focusables.length) return;
+
+		var first = focusables[0];
+		var last = focusables[focusables.length - 1];
+
+		if (e.shiftKey && document.activeElement === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && document.activeElement === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+
+	/* ============================================== stored consent == */
+
+	/**
+	 * @returns {Object|null} Category map from the technical cookie.
+	 */
+	function getStoredCategories() {
 		try {
-			var raw = null;
-			var m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE + '=([^;]*)'));
-			if (m) {
-				raw = decodeURIComponent(m[1]);
-			} else {
-				raw = localStorage.getItem(COOKIE);
-			}
-			if (!raw) {
-				return null;
-			}
-			var stored = JSON.parse(raw);
-			if (!stored || typeof stored !== 'object' || !stored.c) {
-				return null;
-			}
-			if (settings.renew_on_update && stored.v !== consentVersion) {
-				return null; // Banner text changed: ask again.
-			}
-			if (stored.t && Date.now() - stored.t > renewMs()) {
-				return null; // Renewal period expired.
-			}
-			return buildConsent(stored.c);
+			return JSON.parse(getCookie(COOKIE_CATS) || 'null');
 		} catch (e) {
 			return null;
 		}
 	}
 
-	function writeStored(consent) {
-		var payload = JSON.stringify({ v: consentVersion, t: Date.now(), c: consent });
-		var maxAge = Math.round(renewMs() / 1000);
-		document.cookie = COOKIE + '=' + encodeURIComponent(payload) + '; path=/; max-age=' + maxAge + '; SameSite=Lax';
-		try {
-			localStorage.setItem(COOKIE, payload);
-		} catch (e) {
-			/* private mode: cookie only */
+	/**
+	 * Expiry check (ePrivacy + CNIL/AEPD guidance): if more than 365
+	 * days passed since the decision, consent is reset and the banner
+	 * is shown again.
+	 */
+	function checkConsentExpiry() {
+		var stamp = parseInt(getCookie(COOKIE_DATE) || '0', 10);
+		if (!stamp) return;
+		if (Date.now() - stamp > MAX_DAYS * 864e5) {
+			resetConsent();
 		}
 	}
 
-	function visitorId() {
-		var vid;
-		try {
-			vid = localStorage.getItem('consentia_vid');
-			if (!vid) {
-				vid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-				localStorage.setItem('consentia_vid', vid);
-			}
-		} catch (e) {
-			vid = 'anon-' + Date.now().toString(36);
-		}
-		return vid;
+	/**
+	 * Clears consent and notifies the backend so the withdrawal is part
+	 * of the proof log; the banner will be re-shown.
+	 */
+	function resetConsent() {
+		deleteCookie(COOKIE_CONSENT);
+		deleteCookie(COOKIE_DATE);
+		deleteCookie(COOKIE_CATS);
+		saveToBackend({ necessary: true }, 'reset');
+		showBanner();
+		announceToScreenReader(strings.expired || 'Tu consentimiento ha caducado, vuelve a elegir');
 	}
 
-	/* --------------------------------------------- script blocking ---- */
+	/* ===================================================== booting == */
 
-	function activateScripts(consent) {
-		var nodes = document.querySelectorAll('script[data-consentia]');
-		Array.prototype.forEach.call(nodes, function (el) {
-			if (el.getAttribute('data-consentia-run')) {
+	function bindEvents() {
+		var accept = document.getElementById('consentia-accept');
+		var reject = document.getElementById('consentia-reject');
+		var prefs = document.getElementById('consentia-prefs');
+		var save = document.getElementById('consentia-panel-save');
+		var cancel = document.getElementById('consentia-panel-cancel');
+		var revoke = document.getElementById('consentia-revoke');
+
+		// Explicit consent ONLY: these three handlers are the sole entry
+		// points. No scroll, mousemove or navigation listeners exist.
+		if (accept) accept.addEventListener('click', function () {
+			grantConsent({ necessary: true, preferences: true, statistics: true, marketing: true }, 'granted');
+		});
+		if (reject) reject.addEventListener('click', rejectConsent);
+		if (prefs) prefs.addEventListener('click', openSettings);
+
+		if (save) save.addEventListener('click', function () {
+			grantConsent(readPanelCategories(), 'updated');
+			announceToScreenReader(strings.saved || 'Preferencias guardadas');
+		});
+		if (cancel) cancel.addEventListener('click', closePanel);
+		if (revoke) revoke.addEventListener('click', revokeConsent);
+		if (overlay) overlay.addEventListener('click', closePanel);
+
+		// Shortcode / theme reopeners.
+		document.addEventListener('click', function (e) {
+			var target = e.target.closest ? e.target.closest('[data-consentia-open]') : null;
+			if (target) openSettings();
+		});
+	}
+
+	function init() {
+		if (!banner) return;
+
+		bindEvents();
+
+		var decision = getCookie(COOKIE_CONSENT);
+
+		if (!decision) {
+			// Global Privacy Control: honour the browser's global opt-out
+			// signal without showing the banner (CCPA §1798.120 / GDPR).
+			if (data.gpc && navigator.globalPrivacyControl) {
+				rejectConsent();
 				return;
 			}
-			var required = (el.getAttribute('data-consentia') || '').split(/[\s,]+/).filter(Boolean);
-			if (!required.length) {
-				required = ['necessary'];
-			}
-			var ok = required.every(function (cat) {
-				return !!consent[cat];
-			});
-			if (!ok) {
-				return;
-			}
-			el.setAttribute('data-consentia-run', '1');
-			var clone = document.createElement('script');
-			for (var i = 0; i < el.attributes.length; i++) {
-				var attr = el.attributes[i];
-				if (attr.name !== 'type') {
-					clone.setAttribute(attr.name, attr.value);
-				}
-			}
-			clone.textContent = el.textContent;
-			if (el.src) {
-				clone.src = el.src;
-				clone.async = true;
-			}
-			el.parentNode.replaceChild(clone, el);
-		});
-	}
-
-	/* ------------------------------------------ Google Consent Mode ---- */
-
-	function consentSignals(consent) {
-		return {
-			ad_storage: consent.advertising ? 'granted' : 'denied',
-			ad_user_data: consent.advertising ? 'granted' : 'denied',
-			ad_personalization: consent.advertising ? 'granted' : 'denied',
-			analytics_storage: consent.analytics ? 'granted' : 'denied',
-			functionality_storage: consent.functional ? 'granted' : 'denied',
-			personalization_storage: consent.functional ? 'granted' : 'denied',
-			security_storage: 'granted'
-		};
-	}
-
-	function gtagReady() {
-		window.dataLayer = window.dataLayer || [];
-		window.gtag =
-			window.gtag ||
-			function () {
-				window.dataLayer.push(arguments);
-			};
-		return window.gtag;
-	}
-
-	function consentModeDefault() {
-		if (!settings.consent_mode) {
+			showBanner();
 			return;
 		}
-		var gtag = gtagReady();
-		var signals = consentSignals(buildConsent({}));
-		signals.wait_for_update = 500;
-		gtag('consent', 'default', signals);
-	}
 
-	function consentModeUpdate(consent) {
-		if (!settings.consent_mode) {
-			return;
-		}
-		gtagReady()('consent', 'update', consentSignals(consent));
-	}
+		checkConsentExpiry();
 
-	/* ------------------------------------------------------- GA4 ---- */
+		var categories = getStoredCategories() || { necessary: true };
+		categories.necessary = true;
 
-	function injectGA(consent) {
-		if (!settings.ga_id || !consent.analytics || root.getAttribute('data-ga-done')) {
-			return;
-		}
-		root.setAttribute('data-ga-done', '1');
-		var gtag = gtagReady();
-		gtag('js', new Date());
-		gtag('config', settings.ga_id);
-		var s = document.createElement('script');
-		s.async = true;
-		s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(settings.ga_id);
-		document.head.appendChild(s);
-	}
+		// Re-enable what was previously accepted (page reloads included).
+		enableScriptsByCategory(categories);
+		renderWidget();
 
-	/* ------------------------------------------------------- log ---- */
-
-	function sendLog(consent, source) {
-		if (!data.log_url || !window.fetch) {
-			return;
-		}
-		try {
-			fetch(data.log_url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					consent: consent,
-					source: source,
-					visitor_id: visitorId(),
-					consent_version: consentVersion
-				})
-			}).catch(function () {});
-		} catch (e) {
-			/* logging must never break the page */
-		}
-	}
-
-	/* ------------------------------------------- cross-domain sync ---- */
-
-	function broadcastSync(consent) {
-		var domains = data.sync_domains || [];
-		domains.forEach(function (origin) {
-			try {
-				var f = document.createElement('iframe');
-				f.style.display = 'none';
-				f.src = origin + '/?consentia-sync=1';
-				f.onload = function () {
-					try {
-						f.contentWindow.postMessage({ type: 'consentia-consent', consent: consent, v: consentVersion }, '*');
-					} catch (e) {}
-				};
-				document.body.appendChild(f);
-				setTimeout(function () {
-					if (f.parentNode) {
-						f.parentNode.removeChild(f);
-					}
-				}, 5000);
-			} catch (e) {}
+		// Fill [consentia_status] placeholders.
+		var status = document.querySelectorAll('[data-consentia-status]');
+		var text = decision === 'granted'
+			? (strings.accepted || 'Cookies aceptadas')
+			: (strings.rejected || 'Cookies no esenciales rechazadas');
+		Array.prototype.forEach.call(status, function (el) {
+			el.textContent = text;
 		});
 	}
 
-	window.addEventListener('message', function (e) {
-		var msg = e && e.data;
-		if (msg && msg.type === 'consentia-consent' && msg.consent && !decided) {
-			decide(buildConsent(msg.consent), 'sync');
-		}
-	});
-
-	/* ---------------------------------------------------- events ---- */
-
-	function emit(name, detail) {
-		document.dispatchEvent(new CustomEvent(name, { detail: detail }));
-	}
-
-	/* ------------------------------------------------------ DOM ---- */
-
-	function el(tag, className, text) {
-		var node = document.createElement(tag);
-		if (className) {
-			node.className = className;
-		}
-		if (text) {
-			node.textContent = text;
-		}
-		return node;
-	}
-
-	function button(className, label, onClick) {
-		var b = el('button', 'consentia-btn ' + className, label);
-		b.type = 'button';
-		b.addEventListener('click', onClick);
-		return b;
-	}
-
-	root.style.setProperty('--consentia-bg', settings.bg_color || '#111827');
-	root.style.setProperty('--consentia-text', settings.text_color || '#f3f4f6');
-	root.style.setProperty('--consentia-accent', settings.accent_color || '#2f6fed');
-	root.style.setProperty('--consentia-radius', (settings.corner_radius || 0) + 'px');
-
-	var banner = el('div', 'consentia-banner consentia-' + (settings.banner_type || 'card') + ' consentia-' + (settings.position || 'bottom-left') + ' consentia-anim-' + (settings.animation || 'slide'));
-	banner.setAttribute('role', 'dialog');
-	banner.setAttribute('aria-label', settings.title || 'Cookies');
-
-	var inner = el('div', 'consentia-inner');
-
-	if (data.ccpa_scope) {
-		var p = el('p', 'consentia-message', settings.message);
-		inner.appendChild(p);
-		var actions = el('div', 'consentia-actions');
-		actions.appendChild(
-			button('consentia-btn-ccpa', settings.ccpa_do_not_sell || 'Do Not Sell or Share My Personal Information', function () {
-				openPrefs(true);
-			})
-		);
-		actions.appendChild(
-			button('consentia-btn-accept', settings.accept_label || 'OK', function () {
-				decide(allGranted(), 'accepted');
-			})
-		);
-		inner.appendChild(actions);
-	} else {
-		inner.appendChild(el('p', 'consentia-title', settings.title));
-		var msg = el('p', 'consentia-message');
-		msg.appendChild(document.createTextNode(settings.message + ' '));
-		if (settings.privacy_url) {
-			var a = el('a', 'consentia-link', settings.prefs_label ? 'Política de privacidad' : '');
-			a.href = settings.privacy_url;
-			msg.appendChild(a);
-			msg.appendChild(document.createTextNode(' '));
-		}
-		if (settings.cookies_url) {
-			var ac = el('a', 'consentia-link', 'Política de cookies');
-			ac.href = settings.cookies_url;
-			msg.appendChild(ac);
-		}
-		inner.appendChild(msg);
-		var acts = el('div', 'consentia-actions');
-		acts.appendChild(
-			button('consentia-btn-accept', settings.accept_label || 'Aceptar todas', function () {
-				decide(allGranted(), 'accepted');
-			})
-		);
-		acts.appendChild(
-			button('consentia-btn-reject', settings.reject_label || 'Rechazar', function () {
-				decide(buildConsent({}), 'rejected');
-			})
-		);
-		acts.appendChild(
-			button('consentia-btn-prefs', settings.prefs_label || 'Configurar', function () {
-				openPrefs(false);
-			})
-		);
-		inner.appendChild(acts);
-	}
-
-	banner.appendChild(inner);
-	root.appendChild(banner);
-
-	/* ---------------------------------------------- revisit button ---- */
-
-	var revisit = el('button', 'consentia-revisit', '');
-	revisit.type = 'button';
-	revisit.setAttribute('aria-label', settings.prefs_label || 'Configurar cookies');
-	revisit.innerHTML =
-		'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
-		'<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"/>' +
-		'<circle cx="14.5" cy="9" r="1.1" fill="currentColor" stroke="none"/><circle cx="13.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg>';
-	revisit.addEventListener('click', function () {
-		openPrefs(false);
-	});
-	revisit.hidden = true;
-	root.appendChild(revisit);
-
-	/* ----------------------------------------------- prefs panel ---- */
-
-	var prefs = null;
-	var lastFocus = null;
-	var toggles = buildConsent(state);
-
-	function openPrefs(optOutDefault) {
-		if (prefs) {
-			return;
-		}
-		lastFocus = document.activeElement;
-		toggles = buildConsent(optOutDefault ? {} : state);
-
-		prefs = el('div', 'consentia-prefs');
-		prefs.setAttribute('role', 'dialog');
-		prefs.setAttribute('aria-modal', 'true');
-
-		var panel = el('div', 'consentia-prefs-panel');
-		var head = el('div', 'consentia-prefs-head');
-		head.appendChild(el('p', 'consentia-title', 'Preferencias de cookies'));
-		var close = button('consentia-btn-prefs consentia-close', '✕', closePrefs);
-		close.setAttribute('aria-label', 'Cerrar');
-		head.appendChild(close);
-		panel.appendChild(head);
-
-		Object.keys(categories).forEach(function (key) {
-			var cat = categories[key];
-			var row = el('label', 'consentia-pref-row' + (cat.locked ? ' consentia-locked' : ''));
-
-			var info = el('span', 'consentia-pref-info');
-			info.appendChild(el('strong', '', cat.label));
-			info.appendChild(el('small', '', cat.description));
-			row.appendChild(info);
-
-			var sw = el('span', 'consentia-switch');
-			var input = document.createElement('input');
-			input.type = 'checkbox';
-			input.checked = cat.locked ? true : !!toggles[key];
-			input.disabled = !!cat.locked;
-			input.setAttribute('aria-label', cat.label);
-			if (!cat.locked) {
-				input.addEventListener('change', function () {
-					toggles = buildConsent(toggles);
-					toggles[key] = input.checked;
-				});
-			}
-			sw.appendChild(input);
-			sw.appendChild(el('span', 'consentia-switch-track'));
-			row.appendChild(sw);
-
-			panel.appendChild(row);
-		});
-
-		var save = button('consentia-btn-accept consentia-save', 'Guardar preferencias', function () {
-			var custom =
-				toggles.functional || toggles.analytics || toggles.performance || toggles.advertising
-					? 'custom'
-					: 'rejected';
-			decide(buildConsent(toggles), custom);
-		});
-		panel.appendChild(save);
-
-		prefs.appendChild(panel);
-		prefs.addEventListener('click', function (e) {
-			if (e.target === prefs) {
-				closePrefs();
-			}
-		});
-		root.appendChild(prefs);
-
-		requestAnimationFrame(function () {
-			prefs.classList.add('consentia-visible');
-		});
-
-		var first = panel.querySelector('input, button');
-		if (first) {
-			first.focus();
-		}
-	}
-
-	function closePrefs() {
-		if (!prefs) {
-			return;
-		}
-		prefs.classList.remove('consentia-visible');
-		var node = prefs;
-		prefs = null;
-		setTimeout(function () {
-			if (node.parentNode) {
-				node.parentNode.removeChild(node);
-			}
-		}, 250);
-		if (lastFocus && lastFocus.focus) {
-			lastFocus.focus();
-		}
-	}
-
-	document.addEventListener('keydown', function (e) {
-		if (e.key === 'Escape' && prefs) {
-			closePrefs();
-		}
-	});
-
-	// [consentia_manage] shortcode buttons.
-	document.addEventListener('click', function (e) {
-		var t = e.target;
-		if (t && t.closest && t.closest('[data-consentia-open]')) {
-			openPrefs(false);
-		}
-	});
-
-	/* -------------------------------------------------- decide ---- */
-
-	function decide(consent, source) {
-		var firstDecision = !decided && source !== 'sync';
-		decided = true;
-		state = buildConsent(consent);
-
-		writeStored(state);
-		consentModeUpdate(state);
-		activateScripts(state);
-		injectGA(state);
-		sendLog(state, source);
-		broadcastSync(state);
-
-		banner.classList.remove('consentia-visible');
-		setTimeout(function () {
-			banner.hidden = true;
-		}, 320);
-
-		if (settings.revisit_button) {
-			revisit.hidden = false;
-			revisit.classList.add('consentia-revisit-in');
-		}
-
-		closePrefs();
-		updateStatusShortcode();
-
-		if (firstDecision) {
-			emit('consentia:granted', state);
-		}
-		emit('consentia:updated', state);
-	}
-
-	function updateStatusShortcode() {
-		var nodes = document.querySelectorAll('[data-consentia-status]');
-		Array.prototype.forEach.call(nodes, function (n) {
-			var parts = ['Necesarias: sí'];
-			['functional', 'analytics', 'performance', 'advertising'].forEach(function (k) {
-				if (categories[k]) {
-					parts.push(categories[k].label + ': ' + (state[k] ? 'sí' : 'no'));
-				}
-			});
-			n.textContent = parts.join(' · ');
-		});
-	}
-
-	/* --------------------------------------------------- init ---- */
-
-	consentModeDefault();
-
-	var stored = readStored();
-
-	if (stored) {
-		decided = true;
-		state = stored;
-		consentModeUpdate(state);
-		activateScripts(state);
-		injectGA(state);
-		updateStatusShortcode();
-		if (settings.revisit_button) {
-			revisit.hidden = false;
-			revisit.classList.add('consentia-revisit-in');
-		}
-		emit('consentia:ready', state);
-	} else if (data.gpc && (navigator.globalPrivacyControl === true || navigator.globalPrivacyControl === '1')) {
-		// Global Privacy Control: register an opt-out, no banner.
-		decide(buildConsent({}), 'gpc');
-	} else {
-		var delay = parseInt(settings.show_delay_ms || 0, 10);
-		setTimeout(function () {
-			banner.classList.add('consentia-visible');
-		}, Math.max(0, delay));
-	}
-
-	/* ------------------------------------------------------ API ---- */
-
+	// Public API for themes/plugins.
 	window.Consentia = {
-		version: '1.1.0',
-		open: function () {
-			openPrefs(false);
-		},
-		close: closePrefs,
+		open: openSettings,
 		status: function () {
-			return Object.assign({ decided: decided }, state);
+			return getStoredCategories() || { necessary: true, preferences: false, statistics: false, marketing: false, decided: false };
 		},
-		reset: function () {
-			document.cookie = COOKIE + '=; path=/; max-age=0';
-			try {
-				localStorage.removeItem(COOKIE);
-			} catch (e) {}
-			window.location.reload();
-		}
+		revoke: revokeConsent
 	};
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
 })();

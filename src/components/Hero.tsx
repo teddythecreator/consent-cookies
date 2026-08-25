@@ -78,9 +78,9 @@ export default function Hero() {
 
           <Reveal delay={190}>
             <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-mist">
-              Banner con <strong className="font-semibold text-snow">bloqueo real</strong>, escáner de cookies, registro de consentimiento,
-              Google <strong className="font-semibold text-snow">Consent Mode v2</strong>, <strong className="font-semibold text-snow">IAB TCF v2.2</strong>,
-              CCPA y geolocalización. Todo autoalojado: sin SaaS, sin cuentas, sin pagar por visita.
+              Banner con <strong className="font-semibold text-snow">bloqueo real</strong>, registro probatorio de consentimiento,
+              política de cookies automática, Google <strong className="font-semibold text-snow">Consent Mode v2</strong>,
+              <strong className="font-semibold text-snow"> IAB TCF v2.2</strong>, CCPA y geolocalización. Todo autoalojado: sin SaaS, sin cuentas, sin pagar por visita.
             </p>
           </Reveal>
 
@@ -134,9 +134,9 @@ export default function Hero() {
               </span>
             </div>
             <div className="absolute -bottom-5 -right-3 hidden animate-float items-center gap-2 rounded-lg border border-line bg-ink-2/95 px-3 py-2 shadow-xl shadow-black/40 backdrop-blur [animation-delay:1.4s] sm:flex">
-              <Icons.scan className="h-4 w-4 text-teal" />
+              <Icons.ledger className="h-4 w-4 text-teal" />
               <span className="font-mono text-[11px] text-snow">
-                escáner + registro <span className="text-teal">incluidos gratis</span>
+                registro probatorio <span className="text-teal">en tu propia BD</span>
               </span>
             </div>
           </div>

@@ -29,13 +29,13 @@ const ROWS: Row[] = [
   },
   {
     label: "Bloqueo real de scripts",
-    consentia: { good: true, text: "Sí, por 5 categorías" },
+    consentia: { good: true, text: "Sí, por 4 categorías legales" },
     cookieyes: { good: true, text: "Sí" },
   },
   {
-    label: "Escáner de cookies",
-    consentia: { good: true, text: "Incluido gratis" },
-    cookieyes: { good: false, text: "Solo planes de pago y limitado en Free" },
+    label: "Política de cookies",
+    consentia: { good: true, text: "Auto-generada con [consentia_policy], gratis" },
+    cookieyes: { good: false, text: "Generador manual básico" },
   },
   {
     label: "Registro de consentimiento + CSV",

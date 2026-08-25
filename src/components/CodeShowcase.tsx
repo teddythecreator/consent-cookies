@@ -33,14 +33,14 @@ const SNIPPETS: Snippet[] = [
     id: "block",
     tab: "Bloquear un script",
     file: "header.php / plugin de snippets",
-    raw: '<!-- Google Analytics: solo corre si aceptan "Analíticas" -->\n<script type="text/plain" data-consentia="analytics"\n        src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"\n        async></script>\n\n<!-- Meta Pixel: solo si aceptan "Marketing" -->\n<script type="text/plain" data-consentia="marketing">\n  !function(f,b,e,v,n,t,s){ /* píxel */ }(window,document,"script");\n</script>',
+    raw: '<!-- GA4: solo corre si aceptan "Estadísticas" -->\n<script type="text/consentia" data-consentia-category="statistics"\n        src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"\n        async></script>\n\n<!-- Meta Pixel: solo si aceptan "Marketing" -->\n<script type="text/consentia" data-consentia-category="marketing">\n  !function(f,b,e,v,n,t,s){ /* píxel */ }(window,document,"script");\n</script>',
     code: (
       <>
-        <span className="text-faint">{'<!-- Google Analytics: solo corre si aceptan "Analíticas" -->'}</span>
+        <span className="text-faint">{'<!-- GA4: solo corre si aceptan "Estadísticas" -->'}</span>
         {"\n"}
         <span className="text-coral">&lt;script</span> <span className="text-amber">type</span>=
-        <span className="text-teal">"text/plain"</span> <span className="text-amber">data-consentia</span>=
-        <span className="text-teal">"analytics"</span>
+        <span className="text-teal">"text/consentia"</span> <span className="text-amber">data-consentia-category</span>=
+        <span className="text-teal">"statistics"</span>
         {"\n        "}
         <span className="text-amber">src</span>=<span className="text-teal">"https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"</span>
         {"\n        "}
@@ -50,7 +50,7 @@ const SNIPPETS: Snippet[] = [
         <span className="text-faint">{'<!-- Meta Pixel: solo si aceptan "Marketing" -->'}</span>
         {"\n"}
         <span className="text-coral">&lt;script</span> <span className="text-amber">type</span>=
-        <span className="text-teal">"text/plain"</span> <span className="text-amber">data-consentia</span>=
+        <span className="text-teal">"text/consentia"</span> <span className="text-amber">data-consentia-category</span>=
         <span className="text-teal">"marketing"</span>
         <span className="text-coral">&gt;</span>
         {"\n  "}!function(f,b,e,v,n,t,s){"{ /* píxel */ }"}(window,document,<span className="text-teal">"script"</span>);{"\n"}
@@ -62,14 +62,14 @@ const SNIPPETS: Snippet[] = [
     id: "api",
     tab: "API de JavaScript",
     file: "theme.js",
-    raw: "// Reacciona a la primera decisión, sin recargar la página\ndocument.addEventListener('consentia:granted', (e) => {\n  if (e.detail.analytics) iniciarMetricas();\n  if (e.detail.marketing) iniciarPixel();\n});\n\n// Útil para tu propio UI\nwindow.Consentia.open();    // abre las preferencias\nwindow.Consentia.status();  // { necessary: true, analytics: false, … }",
+    raw: "// Reacciona a la primera decisión, sin recargar la página\ndocument.addEventListener('consentia:granted', (e) => {\n  if (e.detail.statistics) iniciarMetricas();\n  if (e.detail.marketing) iniciarPixel();\n});\n\n// Útil para tu propio UI\nwindow.Consentia.open();    // abre las preferencias\nwindow.Consentia.status();  // { necessary: true, statistics: false, … }",
     code: (
       <>
         <span className="text-faint">{'// Reacciona a la primera decisión, sin recargar la página'}</span>
         {"\n"}
         document.addEventListener(<span className="text-teal">'consentia:granted'</span>, (e) =&gt; {"{"}
         {"\n  "}
-        <span className="text-azure">if</span> (e.detail.analytics) iniciarMetricas();{"\n  "}
+        <span className="text-azure">if</span> (e.detail.statistics) iniciarMetricas();{"\n  "}
         <span className="text-azure">if</span> (e.detail.marketing) iniciarPixel();{"\n"}
         {"}"});{"\n\n"}
         <span className="text-faint">{'// Útil para tu propio UI'}</span>
@@ -78,7 +78,7 @@ const SNIPPETS: Snippet[] = [
         <span className="text-faint">{'// abre las preferencias'}</span>
         {"\n"}
         window.<span className="text-azure">Consentia</span>.<span className="text-teal">status</span>();{"  "}
-        <span className="text-faint">{'// { necessary: true, analytics: false, … }'}</span>
+        <span className="text-faint">{'// { necessary: true, statistics: false, … }'}</span>
       </>
     ),
   },
