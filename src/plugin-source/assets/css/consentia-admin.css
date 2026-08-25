@@ -1,0 +1,305 @@
+/**
+ * Consentia — settings page styles (live preview pane + layout).
+ *
+ * @package Consentia
+ */
+
+.consentia-admin-version {
+	font-size: 12px;
+	font-weight: 500;
+	background: #2271b1;
+	color: #fff;
+	border-radius: 999px;
+	padding: 2px 10px;
+	vertical-align: middle;
+	margin-left: 6px;
+}
+
+.consentia-admin-grid {
+	display: block;
+	margin-top: 8px;
+}
+
+.consentia-admin-fields .form-table th {
+	width: 220px;
+}
+
+.consentia-color {
+	width: 64px;
+	height: 34px;
+	padding: 2px;
+	border: 1px solid #8c8f94;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.consentia-admin-preview {
+	position: sticky;
+	top: 40px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 10px;
+	padding: 16px;
+}
+
+.consentia-admin-preview-label {
+	margin: 0 0 10px;
+	font-weight: 600;
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #646970;
+}
+
+/* Miniature site */
+
+.consentia-admin-mini {
+	position: relative;
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 14px;
+	min-height: 240px;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	gap: 8px;
+	overflow: hidden;
+}
+
+.consentia-admin-mini-site {
+	position: absolute;
+	inset: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.consentia-admin-mini-bar {
+	height: 12px;
+	width: 55%;
+	background: #c3c4c7;
+	border-radius: 4px;
+}
+
+.consentia-admin-mini-line {
+	height: 8px;
+	background: #dcdcde;
+	border-radius: 4px;
+}
+
+.consentia-admin-mini-line.w100 { width: 100%; }
+.consentia-admin-mini-line.w85  { width: 85%; }
+.consentia-admin-mini-line.w70  { width: 70%; }
+.consentia-admin-mini-line.w60  { width: 60%; }
+
+.consentia-admin-mini-banner {
+	position: relative;
+	z-index: 2;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border-radius: var(--consentia-radius);
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 250px;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.consentia-admin-mini-banner.is-bar {
+	max-width: none;
+	border-radius: 0;
+}
+
+.consentia-admin-mini-banner.is-top {
+	order: -1;
+}
+
+.consentia-admin-mini-banner strong {
+	font-size: 12px;
+}
+
+.consentia-admin-mini-banner small {
+	font-size: 10.5px;
+	line-height: 1.4;
+	opacity: 0.8;
+}
+
+.consentia-admin-mini-actions {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.consentia-admin-mini-actions em {
+	font-style: normal;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: 6px;
+}
+
+.consentia-admin-mini-actions .a {
+	background: var(--consentia-accent);
+	color: #fff;
+}
+
+.consentia-admin-mini-actions .r {
+	border: 1px solid currentColor;
+	opacity: 0.75;
+}
+
+.consentia-admin-mini-actions .p {
+	text-decoration: underline;
+	opacity: 0.75;
+}
+
+.consentia-admin-disabled {
+	margin: 10px 0 0;
+	color: #b32d2e;
+	font-size: 12px;
+}
+
+/* ---------------------------------------------------- tabs ---- */
+
+.consentia-admin-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 18px 0 22px;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.consentia-admin-tab {
+	appearance: none;
+	background: none;
+	border: 0;
+	border-bottom: 3px solid transparent;
+	cursor: pointer;
+	font: inherit;
+	font-size: 13.5px;
+	font-weight: 600;
+	color: #50575e;
+	padding: 9px 14px;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.consentia-admin-tab:hover {
+	color: #2271b1;
+}
+
+.consentia-admin-tab.active {
+	color: #2271b1;
+	border-bottom-color: #2271b1;
+}
+
+.consentia-admin-pane[hidden] {
+	display: none;
+}
+
+/* --------------------------------------------- log: chips + chart ---- */
+
+.consentia-log-actions {
+	margin: 14px 0;
+}
+
+.consentia-log-totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 14px 0 8px;
+}
+
+.consentia-chip {
+	border: 1px solid;
+	border-left-width: 4px;
+	border-radius: 6px;
+	background: #fff;
+	padding: 8px 14px;
+	min-width: 104px;
+}
+
+.consentia-chip strong {
+	display: block;
+	font-size: 20px;
+	line-height: 1.1;
+}
+
+.consentia-chip span {
+	font-size: 11.5px;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.consentia-chart-svg {
+	width: 100%;
+	height: 140px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+}
+
+.consentia-chart-legend {
+	font-size: 12px;
+	margin: 6px 0 18px;
+}
+
+.consentia-chart-legend span {
+	margin-left: 10px;
+	font-weight: 700;
+}
+
+.consentia-log-table code {
+	font-size: 11.5px;
+}
+
+/* ------------------------------------------------- scanner ---- */
+
+.consentia-scan-table code {
+	font-size: 11.5px;
+	word-break: break-all;
+}
+
+.consentia-scan-cat {
+	min-width: 130px;
+}
+
+/* --------------------------------------- floating preview variant ---- */
+
+.consentia-admin-mini-banner.is-floating {
+	border-radius: 999px;
+	padding: 8px 12px;
+}
+
+.consentia-admin-mini-banner.is-floating .consentia-admin-mini-actions {
+	flex-wrap: nowrap;
+}
+
+.consentia-preview-ccpa {
+	font-size: 10px;
+	text-decoration: underline;
+	opacity: 0.85;
+}
+
+/* ---------------------------------------------------- grid fix ---- */
+
+.consentia-admin-wrap {
+	max-width: 1180px;
+}
+
+@media (min-width: 961px) {
+	.consentia-admin-wrap {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 340px;
+		column-gap: 28px;
+		align-items: start;
+	}
+
+	.consentia-admin-wrap > h1,
+	.consentia-admin-wrap > .description,
+	.consentia-admin-tabs {
+		grid-column: 1 / -1;
+	}
+}

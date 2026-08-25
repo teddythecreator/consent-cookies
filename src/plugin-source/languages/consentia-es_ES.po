@@ -1,0 +1,318 @@
+# Copyright (C) 2026 Thecreator.business
+# This file is distributed under the GPL-2.0-or-later license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Consentia 1.1.0\n"
+"Report-Msgid-Bugs-To: https://consentia.dev/\n"
+"POT-Creation-Date: 2026-02-01 10:00+0000\n"
+"PO-Revision-Date: 2026-02-01 10:00+0000\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: consentia\n"
+
+#: includes/class-consentia-settings.php
+msgid "Banner"
+msgstr "Banner"
+
+#: includes/class-consentia-settings.php
+msgid "Categorías"
+msgstr "Categorías"
+
+#: includes/class-consentia-settings.php
+msgid "Cumplimiento"
+msgstr "Cumplimiento"
+
+#: includes/class-consentia-settings.php
+msgid "Geolocalización"
+msgstr "Geolocalización"
+
+#: includes/class-consentia-settings.php
+msgid "Registro"
+msgstr "Registro"
+
+#: includes/class-consentia-settings.php
+msgid "Escáner"
+msgstr "Escáner"
+
+#: includes/class-consentia-settings.php
+msgid "Herramientas"
+msgstr "Herramientas"
+
+#: includes/class-consentia-settings.php
+msgid "Activar banner"
+msgstr "Activar banner"
+
+#: includes/class-consentia-settings.php
+msgid "Formato"
+msgstr "Formato"
+
+#: includes/class-consentia-settings.php
+msgid "Tarjeta flotante"
+msgstr "Tarjeta flotante"
+
+#: includes/class-consentia-settings.php
+msgid "Barra a ancho completo"
+msgstr "Barra a ancho completo"
+
+#: includes/class-consentia-settings.php
+msgid "Píldora flotante (compacta)"
+msgstr "Píldora flotante (compacta)"
+
+#: includes/class-consentia-settings.php
+msgid "Posición"
+msgstr "Posición"
+
+#: includes/class-consentia-settings.php
+msgid "Abajo izquierda"
+msgstr "Abajo izquierda"
+
+#: includes/class-consentia-settings.php
+msgid "Abajo derecha"
+msgstr "Abajo derecha"
+
+#: includes/class-consentia-settings.php
+msgid "Abajo centrada"
+msgstr "Abajo centrada"
+
+#: includes/class-consentia-settings.php
+msgid "Barra superior"
+msgstr "Barra superior"
+
+#: includes/class-consentia-settings.php
+msgid "Animación"
+msgstr "Animación"
+
+#: includes/class-consentia-settings.php
+msgid "Deslizamiento"
+msgstr "Deslizamiento"
+
+#: includes/class-consentia-settings.php
+msgid "Fundido"
+msgstr "Fundido"
+
+#: includes/class-consentia-settings.php
+msgid "Ninguna"
+msgstr "Ninguna"
+
+#: includes/class-consentia-settings.php
+msgid "Título"
+msgstr "Título"
+
+#: includes/class-consentia-settings.php
+msgid "Mensaje"
+msgstr "Mensaje"
+
+#: includes/class-consentia-settings.php
+msgid "Texto «Aceptar»"
+msgstr "Texto «Aceptar»"
+
+#: includes/class-consentia-settings.php
+msgid "Texto «Rechazar»"
+msgstr "Texto «Rechazar»"
+
+#: includes/class-consentia-settings.php
+msgid "Texto «Configurar»"
+msgstr "Texto «Configurar»"
+
+#: includes/class-consentia-settings.php
+msgid "URL política de privacidad"
+msgstr "URL política de privacidad"
+
+#: includes/class-consentia-settings.php
+msgid "URL política de cookies"
+msgstr "URL política de cookies"
+
+#: includes/class-consentia-settings.php
+msgid "Retraso de aparición (ms)"
+msgstr "Retraso de aparición (ms)"
+
+#: includes/class-consentia-settings.php
+msgid "Renovar consentimiento (meses)"
+msgstr "Renovar consentimiento (meses)"
+
+#: includes/class-consentia-settings.php
+msgid "Renovar al cambiar el texto del banner"
+msgstr "Renovar al cambiar el texto del banner"
+
+#: includes/class-consentia-settings.php
+msgid "Color de fondo"
+msgstr "Color de fondo"
+
+#: includes/class-consentia-settings.php
+msgid "Color de texto"
+msgstr "Color de texto"
+
+#: includes/class-consentia-settings.php
+msgid "Color de acento"
+msgstr "Color de acento"
+
+#: includes/class-consentia-settings.php
+msgid "Radio de esquina (px)"
+msgstr "Radio de esquina (px)"
+
+#: includes/class-consentia-settings.php
+msgid "Botón flotante «Configurar cookies»"
+msgstr "Botón flotante «Configurar cookies»"
+
+#: includes/class-consentia-settings.php
+msgid "Categoría «Funcionales»"
+msgstr "Categoría «Funcionales»"
+
+#: includes/class-consentia-settings.php
+msgid "Categoría «Analíticas»"
+msgstr "Categoría «Analíticas»"
+
+#: includes/class-consentia-settings.php
+msgid "Categoría «Rendimiento»"
+msgstr "Categoría «Rendimiento»"
+
+#: includes/class-consentia-settings.php
+msgid "Categoría «Publicidad»"
+msgstr "Categoría «Publicidad»"
+
+#: includes/class-consentia-settings.php
+msgid "ID de Google Analytics 4"
+msgstr "ID de Google Analytics 4"
+
+#: includes/class-consentia-settings.php
+msgid "Google Consent Mode v2"
+msgstr "Google Consent Mode v2"
+
+#: includes/class-consentia-settings.php
+msgid "Modo avanzado (inyección de tags)"
+msgstr "Modo avanzado (inyección de tags)"
+
+#: includes/class-consentia-settings.php
+msgid "IAB TCF v2.2"
+msgstr "IAB TCF v2.2"
+
+#: includes/class-consentia-settings.php
+msgid "ID de CMP (registro IAB)"
+msgstr "ID de CMP (registro IAB)"
+
+#: includes/class-consentia-settings.php
+msgid "Código de país del editor"
+msgstr "Código de país del editor"
+
+#: includes/class-consentia-settings.php
+msgid "CCPA / CPRA (California)"
+msgstr "CCPA / CPRA (California)"
+
+#: includes/class-consentia-settings.php
+msgid "Texto «Do Not Sell»"
+msgstr "Texto «Do Not Sell»"
+
+#: includes/class-consentia-settings.php
+msgid "No vender ni compartir mi información personal"
+msgstr "No vender ni compartir mi información personal"
+
+#: includes/class-consentia-settings.php
+msgid "Respetar Global Privacy Control"
+msgstr "Respetar Global Privacy Control"
+
+#: includes/class-consentia-settings.php
+msgid "Aplicar reglas por geolocalización"
+msgstr "Aplicar reglas por geolocalización"
+
+#: includes/class-consentia-settings.php
+msgid "Fuente de detección"
+msgstr "Fuente de detección"
+
+#: includes/class-consentia-settings.php
+msgid "Ruta al archivo .mmdb"
+msgstr "Ruta al archivo .mmdb"
+
+#: includes/class-consentia-settings.php
+msgid "Países extra (ISO separados por coma)"
+msgstr "Países extra (ISO separados por coma)"
+
+#: includes/class-consentia-settings.php
+msgid "Simular país (pruebas)"
+msgstr "Simular país (pruebas)"
+
+#: includes/class-consentia-settings.php
+msgid "Registrar consentimientos"
+msgstr "Registrar consentimientos"
+
+#: includes/class-consentia-settings.php
+msgid "Retención (días)"
+msgstr "Retención (días)"
+
+#: includes/class-consentia-settings.php
+msgid "Guardar IP anonimizada (hash)"
+msgstr "Guardar IP anonimizada (hash)"
+
+#: includes/class-consentia-settings.php
+msgid "Dominios para sincronizar consentimiento"
+msgstr "Dominios para sincronizar consentimiento"
+
+#: includes/class-consentia-settings.php
+msgid "CSS adicional del banner"
+msgstr "CSS adicional del banner"
+
+#: includes/class-consentia-settings.php
+msgid "Guardar cambios"
+msgstr "Guardar cambios"
+
+#: includes/class-consentia-settings.php
+msgid "Vista previa en vivo"
+msgstr "Vista previa en vivo"
+
+#: includes/class-consentia-settings.php
+msgid "Ajustes"
+msgstr "Ajustes"
+
+#: includes/class-consentia-settings.php
+msgid "Necesarias"
+msgstr "Necesarias"
+
+#: includes/class-consentia-settings.php
+msgid "Funcionales"
+msgstr "Funcionales"
+
+#: includes/class-consentia-settings.php
+msgid "Analíticas"
+msgstr "Analíticas"
+
+#: includes/class-consentia-settings.php
+msgid "Rendimiento"
+msgstr "Rendimiento"
+
+#: includes/class-consentia-settings.php
+msgid "Publicidad"
+msgstr "Publicidad"
+
+#: includes/class-consentia-frontend.php
+msgid "Configurar cookies"
+msgstr "Configurar cookies"
+
+#: includes/class-consentia-frontend.php
+msgid "Preferencias de cookies…"
+msgstr "Preferencias de cookies…"
+
+#: includes/class-consentia-scanner.php
+msgid "Sin clasificar"
+msgstr "Sin clasificar"
+
+#: includes/class-consentia-scanner.php
+msgid "Ejecutar escaneo"
+msgstr "Ejecutar escaneo"
+
+#: includes/class-consentia-scanner.php
+msgid "Guardar clasificación"
+msgstr "Guardar clasificación"
+
+#: includes/class-consentia-logger.php
+msgid "Exportar CSV"
+msgstr "Exportar CSV"
+
+#: includes/class-consentia-logger.php
+msgid "Vaciar registro"
+msgstr "Vaciar registro"
+
+#: consentia.php
+msgid "Ajustes → Consentia"
+msgstr "Ajustes → Consentia"

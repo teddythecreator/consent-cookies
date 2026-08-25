@@ -1,0 +1,444 @@
+/**
+ * Consentia — banner, panel & widget styles (v1.2).
+ *
+ * Mandatory visual rules (EDPB 05/2020 — no dark patterns):
+ *  – Accept and Reject have EXACTLY the same footprint: same min-width,
+ *    same padding, both with a visible border.
+ *  – Accept: green #28a745 / white text.
+ *  – Reject: light #f8f9fa / visible gray border #6c757d / dark text.
+ *  – Configure: blue outline #005fcc.
+ *  – WCAG 2.1 AA: 4.5:1 contrasts, visible focus (3px solid #005fcc),
+ *    .sr-only helper and prefers-reduced-motion support.
+ *
+ * @package Consentia
+ */
+
+#consentia-root {
+	--consentia-bg: #111827;
+	--consentia-text: #f3f4f6;
+	--consentia-accent: #2f6fed;
+	--consentia-radius: 14px;
+	--consentia-btn-accept-bg: #28a745;
+	--consentia-btn-reject-bg: #f8f9fa;
+	--consentia-btn-reject-border: #6c757d;
+	--consentia-btn-reject-text: #212529;
+	--consentia-btn-prefs: #005fcc;
+	--consentia-focus: #005fcc;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ============================================ screen-reader only == */
+
+.consentia-sr-only {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ======================================================= buttons == */
+
+.consentia-btn {
+	appearance: none;
+	cursor: pointer;
+	font: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.25;
+	min-width: 120px;        /* identical footprint for all three */
+	padding: 12px 24px;      /* identical footprint for all three */
+	border-radius: 8px;
+	border: 2px solid transparent;
+	transition: filter 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* WCAG 2.4.7 — focus always visible, 3px solid per spec */
+.consentia-btn:focus-visible,
+.consentia-cat__input:focus-visible + .consentia-cat__box,
+.consentia-widget:focus-visible,
+.consentia-panel__revoke:focus-visible,
+.consentia-manage-button:focus-visible {
+	outline: 3px solid var(--consentia-focus);
+	outline-offset: 2px;
+}
+
+.consentia-btn--accept {
+	background: var(--consentia-btn-accept-bg);
+	border-color: var(--consentia-btn-accept-bg);
+	color: #ffffff;
+}
+
+.consentia-btn--accept:hover {
+	filter: brightness(1.08);
+	box-shadow: 0 4px 14px rgba(40, 167, 69, 0.35);
+}
+
+.consentia-btn--reject {
+	background: var(--consentia-btn-reject-bg);
+	border-color: var(--consentia-btn-reject-border); /* visible border */
+	color: var(--consentia-btn-reject-text);
+}
+
+.consentia-btn--reject:hover {
+	background: #e9ecef;
+}
+
+.consentia-btn--prefs {
+	background: transparent;
+	border-color: var(--consentia-btn-prefs); /* blue outline */
+	color: var(--consentia-btn-prefs);
+}
+
+.consentia-btn--prefs:hover {
+	background: rgba(0, 95, 204, 0.08);
+}
+
+/* ======================================================== banner == */
+
+.consentia-banner {
+	position: fixed;
+	z-index: 999990;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border-radius: var(--consentia-radius);
+	box-shadow: 0 20px 50px rgba(2, 6, 18, 0.35);
+	padding: 24px;
+	max-width: 440px;
+	opacity: 0;
+	transform: translateY(16px);
+	/* Invisible states must never capture clicks or keyboard focus. */
+	pointer-events: none;
+	visibility: hidden;
+	transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.consentia-banner--visible {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+	visibility: visible;
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.consentia-banner--hidden {
+	display: none;
+}
+
+.consentia-banner--bottom-left   { left: 20px;  bottom: 20px; }
+.consentia-banner--bottom-right  { right: 20px; bottom: 20px; }
+.consentia-banner--bottom-center { left: 50%;   bottom: 20px; transform: translateX(-50%) translateY(16px); }
+.consentia-banner--bottom-center.consentia-banner--visible { transform: translateX(-50%); }
+
+.consentia-banner--top {
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: auto;
+	max-width: none;
+	border-radius: 0;
+	transform: translateY(-100%);
+}
+
+.consentia-banner--top.consentia-banner--visible {
+	transform: none;
+}
+
+.consentia-banner--bar {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-width: none;
+	border-radius: 0;
+	transform: translateY(100%);
+}
+
+.consentia-banner--bar.consentia-banner--visible {
+	transform: none;
+}
+
+.consentia-banner--floating {
+	max-width: 360px;
+	border-radius: 999px;
+	padding: 18px 24px;
+}
+
+.consentia-banner__title {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.consentia-banner__desc {
+	margin: 10px 0 0;
+	font-size: 14px;
+	line-height: 1.55;
+	opacity: 0.85;
+}
+
+.consentia-banner__link {
+	color: var(--consentia-accent);
+	text-decoration: underline;
+}
+
+.consentia-banner__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 18px;
+}
+
+.consentia-banner--bar .consentia-banner__actions,
+.consentia-banner--top .consentia-banner__actions {
+	max-width: 1100px;
+	margin: 18px auto 0;
+}
+
+.consentia-banner--bar .consentia-banner__title,
+.consentia-banner--bar .consentia-banner__desc,
+.consentia-banner--top .consentia-banner__title,
+.consentia-banner--top .consentia-banner__desc {
+	max-width: 1100px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+/* ======================================================== widget == */
+
+.consentia-widget {
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	z-index: 999989;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border: 2px solid var(--consentia-btn-reject-border);
+	border-radius: 999px;
+	padding: 10px 16px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	box-shadow: 0 10px 26px rgba(2, 6, 18, 0.3);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.consentia-widget:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 14px 30px rgba(2, 6, 18, 0.38);
+}
+
+/* ========================================================= panel == */
+
+.consentia-panel-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 999994;
+	background: rgba(4, 8, 18, 0.55);
+}
+
+.consentia-panel {
+	position: fixed;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 999995;
+	width: calc(100% - 40px);
+	max-width: 520px;
+	max-height: calc(100vh - 40px);
+	overflow: auto;
+	background: var(--consentia-bg);
+	color: var(--consentia-text);
+	border-radius: var(--consentia-radius);
+	padding: 28px;
+	box-shadow: 0 30px 80px rgba(2, 6, 18, 0.5);
+}
+
+.consentia-panel__title {
+	margin: 0;
+	font-size: 19px;
+	font-weight: 700;
+}
+
+.consentia-panel__intro {
+	margin: 10px 0 18px;
+	font-size: 13.5px;
+	line-height: 1.55;
+	opacity: 0.82;
+}
+
+.consentia-panel__cats {
+	border: 0;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.consentia-cat {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px;
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--consentia-text) 6%, transparent);
+	cursor: pointer;
+}
+
+.consentia-cat--locked {
+	opacity: 0.75;
+	cursor: default;
+}
+
+.consentia-cat__input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.consentia-cat__box {
+	flex: 0 0 auto;
+	width: 22px;
+	height: 22px;
+	margin-top: 2px;
+	border-radius: 6px;
+	border: 2px solid var(--consentia-btn-reject-border);
+	background: transparent;
+	position: relative;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.consentia-cat__input:checked + .consentia-cat__box {
+	background: var(--consentia-btn-accept-bg);
+	border-color: var(--consentia-btn-accept-bg);
+}
+
+.consentia-cat__input:checked + .consentia-cat__box::after {
+	content: "";
+	position: absolute;
+	left: 6px;
+	top: 2px;
+	width: 6px;
+	height: 11px;
+	border: solid #fff;
+	border-width: 0 2.5px 2.5px 0;
+	transform: rotate(45deg);
+}
+
+.consentia-cat__name {
+	display: block;
+	font-size: 14.5px;
+}
+
+.consentia-cat__badge {
+	font-size: 10.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	opacity: 0.65;
+}
+
+.consentia-cat__desc {
+	display: block;
+	margin-top: 3px;
+	font-size: 12.5px;
+	line-height: 1.45;
+	opacity: 0.72;
+}
+
+.consentia-panel__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 20px;
+}
+
+.consentia-panel__revoke {
+	display: block;
+	margin: 18px 0 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	cursor: pointer;
+	font: inherit;
+	font-size: 12.5px;
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	opacity: 0.75;
+}
+
+.consentia-panel__revoke:hover {
+	opacity: 1;
+}
+
+/* ===================================================== shortcodes == */
+
+.consentia-manage-button {
+	appearance: none;
+	background: none;
+	border: 0;
+	padding: 0;
+	cursor: pointer;
+	font: inherit;
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+/* ===================================================== responsive == */
+
+@media (max-width: 640px) {
+	.consentia-banner {
+		left: 12px !important;
+		right: 12px !important;
+		bottom: 12px;
+		max-width: none;
+		transform: none;
+	}
+
+	/* On mobile the banner spans the whole width, so the desktop
+	   translateX(-50%) centering would push it half off-screen. */
+	.consentia-banner--bottom-center,
+	.consentia-banner--bottom-center.consentia-banner--visible {
+		transform: none;
+	}
+
+	.consentia-banner--top {
+		left: 0 !important;
+		right: 0 !important;
+		bottom: auto;
+	}
+
+	.consentia-banner__actions {
+		flex-direction: column;
+	}
+
+	.consentia-btn {
+		width: 100%; /* same size for everyone, also stacked */
+	}
+
+	.consentia-panel {
+		padding: 20px;
+	}
+}
+
+/* ============================================== reduced motion == */
+
+@media (prefers-reduced-motion: reduce) {
+	.consentia-banner,
+	.consentia-btn,
+	.consentia-widget,
+	.consentia-cat__box {
+		transition: none !important;
+	}
+}
